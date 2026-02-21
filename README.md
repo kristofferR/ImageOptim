@@ -1,6 +1,6 @@
 # ImageOptim
 
-ImageOptim is an enhanced image compression app based on [ImageOptim](https://imageoptim.com). It's a GUI for image optimization tools: PNGOUT, [OxiPNG](https://lib.rs/crates/oxipng), AdvPNG, [JPEGOptim](https://github.com/tjko/jpegoptim), [Jpegli](https://github.com/libjxl/libjxl/tree/main/lib/jpegli), [Gifsicle](https://kornel.ski/lossygif), [SVGO](https://github.com/svg/svgo), plus AVIF, WebP, and JPEG XL optimizers.
+[ImageOptim](https://imageoptim.com) is a GUI for lossless image optimization tools: Zopfli, PNGOUT, [OxiPNG](https://lib.rs/crates/oxipng), AdvPNG, PNGCrush, [JPEGOptim](https://github.com/tjko/jpegoptim), Jpegtran, [Guetzli](https://github.com/google/guetzli), [Gifsicle](https://kornel.ski/lossygif), [SVGO](https://github.com/svg/svgo), [svgcleaner](https://github.com/RazrFalcon/svgcleaner) and [MozJPEG](https://github.com/mozilla/mozjpeg).
 
 ## Building
 
