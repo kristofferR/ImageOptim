@@ -1,9 +1,9 @@
-# Podfile for BearHug
+# Podfile for ImageOptim
 # This adds support for modern image formats
 
 platform :osx, '10.15'
 
-target 'BearHug\' do
+target 'ImageOptim\' do
   use_frameworks!
   
   # WebP support

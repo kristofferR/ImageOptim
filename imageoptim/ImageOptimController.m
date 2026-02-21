@@ -1,4 +1,4 @@
-#import "BearHugController.h"
+#import "ImageOptimController.h"
 #import "FilesController.h"
 #import "RevealButtonCell.h"
 #import "Backend/Job.h"
@@ -12,7 +12,7 @@
 #include <mach/host_info.h>
 #import <Quartz/Quartz.h>
 
-@implementation BearHugController
+@implementation ImageOptimController
 
 extern int quitWhenDone;
 
@@ -180,8 +180,6 @@ static void appendFormatNameIfLossyEnabled(NSUserDefaults *defs, NSString *name,
                                                      [percFormatter stringFromNumber:@(maxOptimizedFraction)]];
                     selectable = YES;
                 }
-            } else if ([defs boolForKey:@"GuetzliEnabled"]) {
-                str = @"Warning: Guetzli tool enabled. Optimizations may take a very long time.";
             } else if ([defs boolForKey:@"LossyEnabled"]) {
                 NSMutableArray *arr = [NSMutableArray new];
                 appendFormatNameIfLossyEnabled(defs, @"JPEG", @"JpegOptimMaxQuality", arr);
@@ -358,19 +356,19 @@ static void appendFormatNameIfLossyEnabled(NSUserDefaults *defs, NSString *name,
 }
 
 - (IBAction)openApiHomepage:(id)sender {
-    [self openURL:@"https://bearhug.app/app-api"];
+    [self openURL:@"https://imageoptim.com/app-api"];
 }
 
 - (IBAction)openHomepage:(id)sender {
-    [self openURL:@"https://bearhug.app"];
+    [self openURL:@"https://imageoptim.com"];
 }
 
 - (IBAction)viewSource:(id)sender {
-    [self openURL:@"https://bearhug.app/source"];
+    [self openURL:@"https://imageoptim.com/source"];
 }
 
 - (IBAction)openDonationPage:(id)sender {
-    [self openURL:@"https://bearhug.app/donate.html"];
+    [self openURL:@"https://imageoptim.com/donate.html"];
 }
 
 - (void)openURL:(NSString *)stringURL {

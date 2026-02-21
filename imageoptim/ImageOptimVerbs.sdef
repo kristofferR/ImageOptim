@@ -9,7 +9,7 @@
 	<!-- <xi:include href="file:///System/Library/ScriptingDefinitions/CocoaStandard.sdef" xpointer="xpointer(/dictionary/suite)"/> -->
 
     <!-- specific suite(s) for the application follow... -->
-	<suite name="BearHug Verbs" code="SVrb" description="Terminology for BearHug Verbs">
+	<suite name="ImageOptim Verbs" code="SVrb" description="Terminology for ImageOptim Verbs">
 
 		<command name="do queuecount command" code="SVrbSimp" description="get the number of items in the queues">
 			<cocoa class="GetQueueCountCommand"/>

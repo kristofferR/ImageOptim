@@ -65,7 +65,7 @@
 - (NSURL *)tempPath {
     static int uid = 0;
     if (uid == 0) uid = getpid() << 12;
-    NSString *filename = [NSString stringWithFormat:@"BearHug.PostProcess.%x.%x.temp", (unsigned int)([Job hash] ^ [self hash]), uid++];
+    NSString *filename = [NSString stringWithFormat:@"ImageOptim.PostProcess.%x.%x.temp", (unsigned int)([Job hash] ^ [self hash]), uid++];
     return [NSURL fileURLWithPath:[NSTemporaryDirectory() stringByAppendingPathComponent:filename]];
 }
 

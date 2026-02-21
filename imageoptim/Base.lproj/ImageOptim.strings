@@ -16,11 +16,11 @@
 /* Menu Item "Services" */
 "131.title" = "Services";
 
-/* Menu Item "Hide BearHug" */
-"134.title" = "Hide BearHug";
+/* Menu Item "Hide ImageOptim" */
+"134.title" = "Hide ImageOptim";
 
-/* Menu Item "Quit BearHug" */
-"136.title" = "Quit BearHug";
+/* Menu Item "Quit ImageOptim" */
+"136.title" = "Quit ImageOptim";
 
 /* Menu Item "Hide Others" */
 "145.title" = "Hide Others";
@@ -52,8 +52,8 @@
 /* TextField Tooltip "Status" */
 "294.ibExternalAccessibilityDescription" = "Status";
 
-/* Menu Item "About BearHug" */
-"361.title" = "About BearHug";
+/* Menu Item "About ImageOptim" */
+"361.title" = "About ImageOptim";
 
 /* Menu Item "Preferences…" */
 "363.title" = "Preferences…";
@@ -118,8 +118,8 @@
 /* Menu Item "ImageOptim Help" */
 "506.title" = "ImageOptim Help";
 
-/* Window Title "About BearHug" */
-"526.title" = "About BearHug";
+/* Window Title "About ImageOptim" */
+"526.title" = "About ImageOptim";
 
 /* Menu Item "Optimize Again" */
 "593.title" = "Optimize Again";
@@ -160,8 +160,8 @@
 /* Menu Item "Optimize Optimized" */
 "725.title" = "Optimize Optimized";
 
-/* Menu Item "BearHug Website" */
-"733.title" = "BearHug Website";
+/* Menu Item "ImageOptim Website" */
+"733.title" = "ImageOptim Website";
 
 /* Menu Item "View Source" */
 "735.title" = "View Source";

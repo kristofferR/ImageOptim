@@ -1,6 +1,6 @@
-# BearHug - Enhanced Image Compression
+# ImageOptim - Enhanced Image Compression
 
-BearHug is an enhanced image compression app based on ImageOptim that adds the following features:
+ImageOptim is an enhanced image compression app based on ImageOptim that adds the following features:
 
 ## New Features
 
@@ -19,7 +19,7 @@ BearHug is an enhanced image compression app based on ImageOptim that adds the f
 
 ## How It Works
 
-BearHug adds two new processing stages to the ImageOptim pipeline:
+ImageOptim adds two new processing stages to the ImageOptim pipeline:
 
 1. **Pre-Processing**: Applied before optimization
    - Image resizing based on user settings
@@ -31,7 +31,7 @@ BearHug adds two new processing stages to the ImageOptim pipeline:
 
 ## Usage
 
-1. Open the BearHug Preferences
+1. Open the ImageOptim Preferences
 2. Navigate to the "Processing" tab
 3. Configure your resize and format conversion settings:
    - Set target dimensions for resizing
@@ -51,7 +51,7 @@ BearHug adds two new processing stages to the ImageOptim pipeline:
 ### Modified Classes
 - `Job`: Extended with processing settings (target dimensions, resize mode, output format, quality)
 - `FilesController`: Applies user settings to new jobs
-- `BearHugController`: Uses enhanced preferences controller
+- `ImageOptimController`: Uses enhanced preferences controller
 
 ### Processing Pipeline
 ```
@@ -60,7 +60,7 @@ Original Image → Pre-Process (Resize) → Optimize → Post-Process (Convert) 
 
 ## Building
 
-BearHug maintains compatibility with the original ImageOptim build system. Simply build the project using Xcode as before.
+ImageOptim maintains compatibility with the original ImageOptim build system. Simply build the project using Xcode as before.
 
 ## Future Enhancements
 

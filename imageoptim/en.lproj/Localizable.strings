@@ -1,4 +1,2 @@
-@@ .. @@
- /* status bar */
--"ImageOptim will quit when optimizations are complete" = "ImageOptim will quit when optimizations are complete";
-+"BearHug will quit when optimizations are complete" = "BearHug will quit when optimizations are complete";
+/* status bar */
+"ImageOptim will quit when optimizations are complete" = "ImageOptim will quit when optimizations are complete";

@@ -119,19 +119,19 @@
 		</dict>
 	</array>
 	<key>CFBundleExecutable</key>
-	<string>BearHug</string>
+	<string>${EXECUTABLE_NAME}</string>
 	<key>CFBundleHelpBookFolder</key>
 	<string>Help</string>
 	<key>CFBundleHelpBookName</key>
-	<string>BearHug Help</string>
+	<string>ImageOptim Help</string>
 	<key>CFBundleIconFile</key>
-	<string>BearHug.icns</string>
+	<string>ImageOptim.icns</string>
 	<key>CFBundleIdentifier</key>
 	<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundleName</key>
-	<string>BearHug</string>
+	<string>${PRODUCT_NAME}</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
@@ -159,7 +159,7 @@
 				<string>ImageOptimize</string>
 			</dict>
 			<key>NSMessage</key>
-			<string>handleBearHugServices</string>
+			<string>handleServices</string>
 			<key>NSRequiredContext</key>
 			<dict>
 				<key>NSApplicationIdentifier</key>
@@ -175,17 +175,17 @@
 				<string>public.svg-image</string>
 			</array>
 			<key>NSServiceDescription</key>
-			<string>Losslessly reduce image file sizes with BearHug</string>
+			<string>Losslessly reduce image file sizes with ImageOptim</string>
 		</dict>
 	</array>
 	<key>OSAScriptingDefinition</key>
-	<string>BearHugVerbs.sdef</string>
+	<string>ImageOptimVerbs.sdef</string>
 	<key>SUAllowsAutomaticUpdates</key>
 	<true/>
 	<key>SUEnableAutomaticChecks</key>
 	<true/>
 	<key>SUFeedURL</key>
-	<string>https://bearhug.app/appcast.xml</string>
+	<string>https://imageoptim.com/appcast.xml</string>
 	<key>SUPublicDSAKeyFile</key>
 	<string>dsa_pub.pem</string>
 	<key>SUPublicEDKey</key>

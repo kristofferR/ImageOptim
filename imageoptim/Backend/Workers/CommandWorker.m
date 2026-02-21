@@ -176,7 +176,7 @@
 - (NSURL *)tempPath {
     static int uid = 0;
     if (uid == 0) uid = getpid() << 12;
-    NSString *filename = [NSString stringWithFormat:@"BearHug.%@.%x.%x.temp", [self className], (unsigned int)([Job hash] ^ [self hash]), uid++];
+    NSString *filename = [NSString stringWithFormat:@"ImageOptim.%@.%x.%x.temp", [self className], (unsigned int)([Job hash] ^ [self hash]), uid++];
     return [NSURL fileURLWithPath:[NSTemporaryDirectory() stringByAppendingPathComponent:filename]];
 }
 
