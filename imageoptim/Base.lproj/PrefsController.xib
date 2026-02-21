@@ -18,21 +18,21 @@
         <window title="ImageOptim Preferences" allowsToolTipsWhenApplicationIsInactive="NO" autorecalculatesKeyViewLoop="NO" hidesOnDeactivate="YES" showsToolbarButton="NO" frameAutosaveName="Prefs" animationBehavior="default" id="5" userLabel="Window">
             <windowStyleMask key="styleMask" titled="YES" closable="YES" miniaturizable="YES" resizable="YES"/>
             <windowPositionMask key="initialPositionMask" leftStrut="YES" rightStrut="YES" topStrut="YES" bottomStrut="YES"/>
-            <rect key="contentRect" x="173" y="531" width="663" height="376"/>
+            <rect key="contentRect" x="173" y="411" width="663" height="496"/>
             <rect key="screenRect" x="0.0" y="0.0" width="1440" height="878"/>
-            <value key="minSize" type="size" width="663" height="361"/>
-            <value key="maxSize" type="size" width="790" height="371"/>
+            <value key="minSize" type="size" width="663" height="481"/>
+            <value key="maxSize" type="size" width="790" height="496"/>
             <view key="contentView" id="6">
-                <rect key="frame" x="0.0" y="0.0" width="663" height="376"/>
+                <rect key="frame" x="0.0" y="0.0" width="663" height="496"/>
                 <autoresizingMask key="autoresizingMask"/>
                 <subviews>
                     <tabView initialItem="167" translatesAutoresizingMaskIntoConstraints="NO" id="166">
-                        <rect key="frame" x="13" y="10" width="637" height="360"/>
+                        <rect key="frame" x="13" y="10" width="637" height="480"/>
                         <font key="font" metaFont="system"/>
                         <tabViewItems>
                             <tabViewItem label="General" identifier="" id="167">
                                 <view key="view" id="169">
-                                    <rect key="frame" x="10" y="33" width="617" height="314"/>
+                                    <rect key="frame" x="10" y="33" width="617" height="434"/>
                                     <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
                                     <subviews>
                                         <box title="Writing files to disk" translatesAutoresizingMaskIntoConstraints="NO" id="280">
@@ -336,7 +336,7 @@
                             </tabViewItem>
                             <tabViewItem label="Quality" identifier="" id="177">
                                 <view key="view" id="178">
-                                    <rect key="frame" x="10" y="33" width="617" height="314"/>
+                                    <rect key="frame" x="10" y="33" width="617" height="434"/>
                                     <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
                                     <subviews>
                                         <button horizontalHuggingPriority="750" verticalHuggingPriority="750" tag="2" translatesAutoresizingMaskIntoConstraints="NO" id="296">
@@ -761,6 +761,350 @@
                                                 </binding>
                                             </connections>
                                         </textField>
+                                        <textField verticalHuggingPriority="750" horizontalCompressionResistancePriority="250" allowsCharacterPickerTouchBarItem="YES" translatesAutoresizingMaskIntoConstraints="NO" id="jxl-label">
+                                            <rect key="frame" x="18" y="100" width="96" height="17"/>
+                                            <textFieldCell key="cell" lineBreakMode="truncatingTail" sendsActionOnEndEditing="YES" alignment="right" title="JPEG XL quality" id="jxl-label-cell">
+                                                <font key="font" metaFont="system"/>
+                                                <color key="textColor" name="controlTextColor" catalog="System" colorSpace="catalog"/>
+                                                <color key="backgroundColor" name="controlColor" catalog="System" colorSpace="catalog"/>
+                                            </textFieldCell>
+                                            <connections>
+                                                <binding destination="300" name="textColor" keyPath="values.LossyEnabled" id="jxl-lbl-clr">
+                                                    <dictionary key="options">
+                                                        <bool key="NSRaisesForNotApplicableKeys" value="NO"/>
+                                                        <string key="NSValueTransformerName">DisabledColor</string>
+                                                    </dictionary>
+                                                </binding>
+                                            </connections>
+                                        </textField>
+                                        <slider verticalHuggingPriority="750" translatesAutoresizingMaskIntoConstraints="NO" id="jxl-slider">
+                                            <rect key="frame" x="118" y="88" width="445" height="25"/>
+                                            <constraints>
+                                                <constraint firstAttribute="height" constant="22" id="jxl-sl-h"/>
+                                            </constraints>
+                                            <sliderCell key="cell" lineBreakMode="truncatingTail" continuous="YES" alignment="left" minValue="10" maxValue="100" doubleValue="85" tickMarkPosition="below" numberOfTickMarks="10" allowsTickMarkValuesOnly="NO" sliderType="linear" id="jxl-sl-cell">
+                                                <font key="font" size="12" name="Helvetica"/>
+                                            </sliderCell>
+                                            <connections>
+                                                <binding destination="300" name="enabled" keyPath="values.LossyEnabled" id="jxl-sl-en"/>
+                                                <binding destination="300" name="value" keyPath="values.JxlQuality" id="jxl-sl-val"/>
+                                            </connections>
+                                        </slider>
+                                        <textField verticalHuggingPriority="750" horizontalCompressionResistancePriority="250" allowsCharacterPickerTouchBarItem="YES" translatesAutoresizingMaskIntoConstraints="NO" id="jxl-value">
+                                            <rect key="frame" x="567" y="101" width="28" height="11"/>
+                                            <constraints>
+                                                <constraint firstAttribute="height" constant="11" id="jxl-val-h"/>
+                                                <constraint firstAttribute="width" relation="greaterThanOrEqual" constant="24" id="jxl-val-w"/>
+                                            </constraints>
+                                            <textFieldCell key="cell" lineBreakMode="truncatingTail" sendsActionOnEndEditing="YES" alignment="left" title="85%" id="jxl-val-cell">
+                                                <numberFormatter key="formatter" formatterBehavior="10_0" positiveFormat="0%" negativeFormat="-0%" hasThousandSeparators="NO" thousandSeparator=" " id="jxl-val-fmt">
+                                                    <attributedString key="attributedStringForZero">
+                                                        <fragment content="0%"/>
+                                                    </attributedString>
+                                                    <decimal key="minimum" value="NaN"/>
+                                                    <decimal key="maximum" value="NaN"/>
+                                                </numberFormatter>
+                                                <font key="font" metaFont="miniSystem"/>
+                                                <color key="textColor" name="controlTextColor" catalog="System" colorSpace="catalog"/>
+                                                <color key="backgroundColor" name="controlColor" catalog="System" colorSpace="catalog"/>
+                                            </textFieldCell>
+                                            <connections>
+                                                <binding destination="300" name="value" keyPath="values.JxlQuality" id="jxl-val-bnd"/>
+                                                <binding destination="300" name="textColor" keyPath="values.LossyEnabled" id="jxl-val-clr">
+                                                    <dictionary key="options">
+                                                        <bool key="NSRaisesForNotApplicableKeys" value="NO"/>
+                                                        <string key="NSValueTransformerName">DisabledColor</string>
+                                                    </dictionary>
+                                                </binding>
+                                            </connections>
+                                        </textField>
+                                        <textField verticalHuggingPriority="750" horizontalCompressionResistancePriority="250" allowsCharacterPickerTouchBarItem="YES" translatesAutoresizingMaskIntoConstraints="NO" id="jxl-min">
+                                            <rect key="frame" x="118" y="70" width="24" height="11"/>
+                                            <constraints>
+                                                <constraint firstAttribute="height" constant="11" id="jxl-mn-h"/>
+                                            </constraints>
+                                            <textFieldCell key="cell" lineBreakMode="truncatingTail" sendsActionOnEndEditing="YES" title="10%" id="jxl-mn-cell">
+                                                <font key="font" metaFont="miniSystem"/>
+                                                <color key="textColor" name="controlTextColor" catalog="System" colorSpace="catalog"/>
+                                                <color key="backgroundColor" name="controlColor" catalog="System" colorSpace="catalog"/>
+                                            </textFieldCell>
+                                            <connections>
+                                                <binding destination="300" name="textColor" keyPath="values.LossyEnabled" id="jxl-mn-clr">
+                                                    <dictionary key="options">
+                                                        <bool key="NSRaisesForNotApplicableKeys" value="NO"/>
+                                                        <string key="NSValueTransformerName">DisabledColor</string>
+                                                    </dictionary>
+                                                </binding>
+                                            </connections>
+                                        </textField>
+                                        <textField verticalHuggingPriority="750" horizontalCompressionResistancePriority="250" allowsCharacterPickerTouchBarItem="YES" translatesAutoresizingMaskIntoConstraints="NO" id="jxl-mid">
+                                            <rect key="frame" x="327" y="70" width="27" height="11"/>
+                                            <constraints>
+                                                <constraint firstAttribute="height" constant="11" id="jxl-md-h"/>
+                                            </constraints>
+                                            <textFieldCell key="cell" lineBreakMode="truncatingTail" sendsActionOnEndEditing="YES" alignment="center" title="55%" id="jxl-md-cell">
+                                                <font key="font" metaFont="miniSystem"/>
+                                                <color key="textColor" name="controlTextColor" catalog="System" colorSpace="catalog"/>
+                                                <color key="backgroundColor" name="controlColor" catalog="System" colorSpace="catalog"/>
+                                            </textFieldCell>
+                                            <connections>
+                                                <binding destination="300" name="textColor" keyPath="values.LossyEnabled" id="jxl-md-clr">
+                                                    <dictionary key="options">
+                                                        <bool key="NSRaisesForNotApplicableKeys" value="NO"/>
+                                                        <string key="NSValueTransformerName">DisabledColor</string>
+                                                    </dictionary>
+                                                </binding>
+                                            </connections>
+                                        </textField>
+                                        <textField verticalHuggingPriority="750" horizontalCompressionResistancePriority="250" allowsCharacterPickerTouchBarItem="YES" translatesAutoresizingMaskIntoConstraints="NO" id="jxl-max">
+                                            <rect key="frame" x="539" y="70" width="28" height="11"/>
+                                            <constraints>
+                                                <constraint firstAttribute="height" constant="11" id="jxl-mx-h"/>
+                                            </constraints>
+                                            <textFieldCell key="cell" lineBreakMode="truncatingTail" sendsActionOnEndEditing="YES" alignment="right" title="100%" id="jxl-mx-cell">
+                                                <font key="font" metaFont="miniSystem"/>
+                                                <color key="textColor" name="controlTextColor" catalog="System" colorSpace="catalog"/>
+                                                <color key="backgroundColor" name="controlColor" catalog="System" colorSpace="catalog"/>
+                                            </textFieldCell>
+                                            <connections>
+                                                <binding destination="300" name="textColor" keyPath="values.LossyEnabled" id="jxl-mx-clr">
+                                                    <dictionary key="options">
+                                                        <bool key="NSRaisesForNotApplicableKeys" value="NO"/>
+                                                        <string key="NSValueTransformerName">DisabledColor</string>
+                                                    </dictionary>
+                                                </binding>
+                                            </connections>
+                                        </textField>
+                                        <textField verticalHuggingPriority="750" horizontalCompressionResistancePriority="250" allowsCharacterPickerTouchBarItem="YES" translatesAutoresizingMaskIntoConstraints="NO" id="avif-label">
+                                            <rect key="frame" x="38" y="43" width="76" height="17"/>
+                                            <textFieldCell key="cell" lineBreakMode="truncatingTail" sendsActionOnEndEditing="YES" alignment="right" title="AVIF quality" id="avif-lbl-c">
+                                                <font key="font" metaFont="system"/>
+                                                <color key="textColor" name="controlTextColor" catalog="System" colorSpace="catalog"/>
+                                                <color key="backgroundColor" name="controlColor" catalog="System" colorSpace="catalog"/>
+                                            </textFieldCell>
+                                            <connections>
+                                                <binding destination="300" name="textColor" keyPath="values.LossyEnabled" id="avif-lbl-clr">
+                                                    <dictionary key="options">
+                                                        <bool key="NSRaisesForNotApplicableKeys" value="NO"/>
+                                                        <string key="NSValueTransformerName">DisabledColor</string>
+                                                    </dictionary>
+                                                </binding>
+                                            </connections>
+                                        </textField>
+                                        <slider verticalHuggingPriority="750" translatesAutoresizingMaskIntoConstraints="NO" id="avif-slider">
+                                            <rect key="frame" x="118" y="31" width="166" height="25"/>
+                                            <constraints>
+                                                <constraint firstAttribute="width" relation="greaterThanOrEqual" priority="900" constant="100" id="avif-sl-mw"/>
+                                                <constraint firstAttribute="height" constant="22" id="avif-sl-h"/>
+                                            </constraints>
+                                            <sliderCell key="cell" lineBreakMode="truncatingTail" continuous="YES" alignment="left" minValue="10" maxValue="100" doubleValue="85" tickMarkPosition="below" numberOfTickMarks="10" allowsTickMarkValuesOnly="NO" sliderType="linear" id="avif-sl-c">
+                                                <font key="font" size="12" name="Helvetica"/>
+                                            </sliderCell>
+                                            <connections>
+                                                <binding destination="300" name="enabled" keyPath="values.LossyEnabled" id="avif-sl-en"/>
+                                                <binding destination="300" name="value" keyPath="values.AvifQuality" id="avif-sl-val"/>
+                                            </connections>
+                                        </slider>
+                                        <textField verticalHuggingPriority="750" horizontalCompressionResistancePriority="250" allowsCharacterPickerTouchBarItem="YES" translatesAutoresizingMaskIntoConstraints="NO" id="avif-value">
+                                            <rect key="frame" x="288" y="44" width="28" height="11"/>
+                                            <constraints>
+                                                <constraint firstAttribute="width" relation="greaterThanOrEqual" constant="24" id="avif-val-w"/>
+                                                <constraint firstAttribute="height" constant="11" id="avif-val-h"/>
+                                            </constraints>
+                                            <textFieldCell key="cell" lineBreakMode="truncatingTail" sendsActionOnEndEditing="YES" alignment="left" title="85%" id="avif-val-c">
+                                                <numberFormatter key="formatter" formatterBehavior="10_0" positiveFormat="0%" negativeFormat="-0%" hasThousandSeparators="NO" thousandSeparator=" " id="avif-val-fmt">
+                                                    <attributedString key="attributedStringForZero">
+                                                        <fragment content="0%"/>
+                                                    </attributedString>
+                                                    <decimal key="minimum" value="NaN"/>
+                                                    <decimal key="maximum" value="NaN"/>
+                                                </numberFormatter>
+                                                <font key="font" metaFont="miniSystem"/>
+                                                <color key="textColor" name="controlTextColor" catalog="System" colorSpace="catalog"/>
+                                                <color key="backgroundColor" name="controlColor" catalog="System" colorSpace="catalog"/>
+                                            </textFieldCell>
+                                            <connections>
+                                                <binding destination="300" name="value" keyPath="values.AvifQuality" id="avif-val-bnd"/>
+                                                <binding destination="300" name="textColor" keyPath="values.LossyEnabled" id="avif-val-clr">
+                                                    <dictionary key="options">
+                                                        <bool key="NSRaisesForNotApplicableKeys" value="NO"/>
+                                                        <string key="NSValueTransformerName">DisabledColor</string>
+                                                    </dictionary>
+                                                </binding>
+                                            </connections>
+                                        </textField>
+                                        <textField verticalHuggingPriority="750" horizontalCompressionResistancePriority="250" allowsCharacterPickerTouchBarItem="YES" translatesAutoresizingMaskIntoConstraints="NO" id="avif-min">
+                                            <rect key="frame" x="118" y="13" width="24" height="11"/>
+                                            <constraints>
+                                                <constraint firstAttribute="height" constant="11" id="avif-mn-h"/>
+                                            </constraints>
+                                            <textFieldCell key="cell" lineBreakMode="truncatingTail" sendsActionOnEndEditing="YES" title="10%" id="avif-mn-c">
+                                                <font key="font" metaFont="miniSystem"/>
+                                                <color key="textColor" name="controlTextColor" catalog="System" colorSpace="catalog"/>
+                                                <color key="backgroundColor" name="controlColor" catalog="System" colorSpace="catalog"/>
+                                            </textFieldCell>
+                                            <connections>
+                                                <binding destination="300" name="textColor" keyPath="values.LossyEnabled" id="avif-mn-clr">
+                                                    <dictionary key="options">
+                                                        <bool key="NSRaisesForNotApplicableKeys" value="NO"/>
+                                                        <string key="NSValueTransformerName">DisabledColor</string>
+                                                    </dictionary>
+                                                </binding>
+                                            </connections>
+                                        </textField>
+                                        <textField verticalHuggingPriority="750" horizontalCompressionResistancePriority="250" allowsCharacterPickerTouchBarItem="YES" translatesAutoresizingMaskIntoConstraints="NO" id="avif-mid">
+                                            <rect key="frame" x="185" y="13" width="27" height="11"/>
+                                            <constraints>
+                                                <constraint firstAttribute="height" constant="11" id="avif-md-h"/>
+                                            </constraints>
+                                            <textFieldCell key="cell" lineBreakMode="truncatingTail" sendsActionOnEndEditing="YES" alignment="center" title="55%" id="avif-md-c">
+                                                <font key="font" metaFont="miniSystem"/>
+                                                <color key="textColor" name="controlTextColor" catalog="System" colorSpace="catalog"/>
+                                                <color key="backgroundColor" name="controlColor" catalog="System" colorSpace="catalog"/>
+                                            </textFieldCell>
+                                            <connections>
+                                                <binding destination="300" name="textColor" keyPath="values.LossyEnabled" id="avif-md-clr">
+                                                    <dictionary key="options">
+                                                        <bool key="NSRaisesForNotApplicableKeys" value="NO"/>
+                                                        <string key="NSValueTransformerName">DisabledColor</string>
+                                                    </dictionary>
+                                                </binding>
+                                            </connections>
+                                        </textField>
+                                        <textField verticalHuggingPriority="750" horizontalCompressionResistancePriority="250" allowsCharacterPickerTouchBarItem="YES" translatesAutoresizingMaskIntoConstraints="NO" id="avif-max">
+                                            <rect key="frame" x="256" y="13" width="28" height="11"/>
+                                            <constraints>
+                                                <constraint firstAttribute="height" constant="11" id="avif-mx-h"/>
+                                            </constraints>
+                                            <textFieldCell key="cell" lineBreakMode="truncatingTail" sendsActionOnEndEditing="YES" alignment="right" title="100%" id="avif-mx-c">
+                                                <font key="font" metaFont="miniSystem"/>
+                                                <color key="textColor" name="controlTextColor" catalog="System" colorSpace="catalog"/>
+                                                <color key="backgroundColor" name="controlColor" catalog="System" colorSpace="catalog"/>
+                                            </textFieldCell>
+                                            <connections>
+                                                <binding destination="300" name="textColor" keyPath="values.LossyEnabled" id="avif-mx-clr">
+                                                    <dictionary key="options">
+                                                        <bool key="NSRaisesForNotApplicableKeys" value="NO"/>
+                                                        <string key="NSValueTransformerName">DisabledColor</string>
+                                                    </dictionary>
+                                                </binding>
+                                            </connections>
+                                        </textField>
+                                        <textField verticalHuggingPriority="750" horizontalCompressionResistancePriority="250" allowsCharacterPickerTouchBarItem="YES" translatesAutoresizingMaskIntoConstraints="NO" id="webp-label">
+                                            <rect key="frame" x="324" y="43" width="69" height="17"/>
+                                            <textFieldCell key="cell" lineBreakMode="truncatingTail" sendsActionOnEndEditing="YES" alignment="right" title="WebP quality" id="webp-lbl-c">
+                                                <font key="font" metaFont="system"/>
+                                                <color key="textColor" name="controlTextColor" catalog="System" colorSpace="catalog"/>
+                                                <color key="backgroundColor" name="controlColor" catalog="System" colorSpace="catalog"/>
+                                            </textFieldCell>
+                                            <connections>
+                                                <binding destination="300" name="textColor" keyPath="values.LossyEnabled" id="webp-lbl-clr">
+                                                    <dictionary key="options">
+                                                        <bool key="NSRaisesForNotApplicableKeys" value="NO"/>
+                                                        <string key="NSValueTransformerName">DisabledColor</string>
+                                                    </dictionary>
+                                                </binding>
+                                            </connections>
+                                        </textField>
+                                        <slider verticalHuggingPriority="750" translatesAutoresizingMaskIntoConstraints="NO" id="webp-slider">
+                                            <rect key="frame" x="397" y="31" width="166" height="25"/>
+                                            <constraints>
+                                                <constraint firstAttribute="width" relation="greaterThanOrEqual" priority="900" constant="100" id="webp-sl-mw"/>
+                                                <constraint firstAttribute="height" constant="22" id="webp-sl-h"/>
+                                            </constraints>
+                                            <sliderCell key="cell" lineBreakMode="truncatingTail" continuous="YES" alignment="left" minValue="10" maxValue="100" doubleValue="85" tickMarkPosition="below" numberOfTickMarks="10" allowsTickMarkValuesOnly="NO" sliderType="linear" id="webp-sl-c">
+                                                <font key="font" size="12" name="Helvetica"/>
+                                            </sliderCell>
+                                            <connections>
+                                                <binding destination="300" name="value" keyPath="values.WebpQuality" id="webp-sl-val"/>
+                                                <binding destination="300" name="enabled" keyPath="values.LossyEnabled" id="webp-sl-en"/>
+                                            </connections>
+                                        </slider>
+                                        <textField verticalHuggingPriority="750" horizontalCompressionResistancePriority="250" allowsCharacterPickerTouchBarItem="YES" translatesAutoresizingMaskIntoConstraints="NO" id="webp-value">
+                                            <rect key="frame" x="567" y="44" width="28" height="11"/>
+                                            <constraints>
+                                                <constraint firstAttribute="width" relation="greaterThanOrEqual" constant="24" id="webp-val-w"/>
+                                                <constraint firstAttribute="height" constant="11" id="webp-val-h"/>
+                                            </constraints>
+                                            <textFieldCell key="cell" lineBreakMode="truncatingTail" sendsActionOnEndEditing="YES" alignment="left" title="85%" id="webp-val-c">
+                                                <numberFormatter key="formatter" formatterBehavior="10_0" positiveFormat="0%" negativeFormat="-0%" hasThousandSeparators="NO" thousandSeparator=" " id="webp-val-fmt">
+                                                    <attributedString key="attributedStringForZero">
+                                                        <fragment content="0%"/>
+                                                    </attributedString>
+                                                    <decimal key="minimum" value="NaN"/>
+                                                    <decimal key="maximum" value="NaN"/>
+                                                </numberFormatter>
+                                                <font key="font" metaFont="miniSystem"/>
+                                                <color key="textColor" name="controlTextColor" catalog="System" colorSpace="catalog"/>
+                                                <color key="backgroundColor" name="controlColor" catalog="System" colorSpace="catalog"/>
+                                            </textFieldCell>
+                                            <connections>
+                                                <binding destination="300" name="value" keyPath="values.WebpQuality" id="webp-val-bnd"/>
+                                                <binding destination="300" name="textColor" keyPath="values.LossyEnabled" id="webp-val-clr">
+                                                    <dictionary key="options">
+                                                        <bool key="NSRaisesForNotApplicableKeys" value="NO"/>
+                                                        <string key="NSValueTransformerName">DisabledColor</string>
+                                                    </dictionary>
+                                                </binding>
+                                            </connections>
+                                        </textField>
+                                        <textField verticalHuggingPriority="750" horizontalCompressionResistancePriority="250" allowsCharacterPickerTouchBarItem="YES" translatesAutoresizingMaskIntoConstraints="NO" id="webp-min">
+                                            <rect key="frame" x="397" y="13" width="24" height="11"/>
+                                            <constraints>
+                                                <constraint firstAttribute="height" constant="11" id="webp-mn-h"/>
+                                            </constraints>
+                                            <textFieldCell key="cell" lineBreakMode="truncatingTail" sendsActionOnEndEditing="YES" title="10%" id="webp-mn-c">
+                                                <font key="font" metaFont="miniSystem"/>
+                                                <color key="textColor" name="controlTextColor" catalog="System" colorSpace="catalog"/>
+                                                <color key="backgroundColor" name="controlColor" catalog="System" colorSpace="catalog"/>
+                                            </textFieldCell>
+                                            <connections>
+                                                <binding destination="300" name="textColor" keyPath="values.LossyEnabled" id="webp-mn-clr">
+                                                    <dictionary key="options">
+                                                        <bool key="NSRaisesForNotApplicableKeys" value="NO"/>
+                                                        <string key="NSValueTransformerName">DisabledColor</string>
+                                                    </dictionary>
+                                                </binding>
+                                            </connections>
+                                        </textField>
+                                        <textField verticalHuggingPriority="750" horizontalCompressionResistancePriority="250" allowsCharacterPickerTouchBarItem="YES" translatesAutoresizingMaskIntoConstraints="NO" id="webp-mid">
+                                            <rect key="frame" x="467" y="13" width="27" height="11"/>
+                                            <constraints>
+                                                <constraint firstAttribute="height" constant="11" id="webp-md-h"/>
+                                            </constraints>
+                                            <textFieldCell key="cell" lineBreakMode="truncatingTail" sendsActionOnEndEditing="YES" alignment="center" title="55%" id="webp-md-c">
+                                                <font key="font" metaFont="miniSystem"/>
+                                                <color key="textColor" name="controlTextColor" catalog="System" colorSpace="catalog"/>
+                                                <color key="backgroundColor" name="controlColor" catalog="System" colorSpace="catalog"/>
+                                            </textFieldCell>
+                                            <connections>
+                                                <binding destination="300" name="textColor" keyPath="values.LossyEnabled" id="webp-md-clr">
+                                                    <dictionary key="options">
+                                                        <bool key="NSRaisesForNotApplicableKeys" value="NO"/>
+                                                        <string key="NSValueTransformerName">DisabledColor</string>
+                                                    </dictionary>
+                                                </binding>
+                                            </connections>
+                                        </textField>
+                                        <textField verticalHuggingPriority="750" horizontalCompressionResistancePriority="250" allowsCharacterPickerTouchBarItem="YES" translatesAutoresizingMaskIntoConstraints="NO" id="webp-max">
+                                            <rect key="frame" x="535" y="13" width="28" height="11"/>
+                                            <constraints>
+                                                <constraint firstAttribute="height" constant="11" id="webp-mx-h"/>
+                                            </constraints>
+                                            <textFieldCell key="cell" lineBreakMode="truncatingTail" sendsActionOnEndEditing="YES" alignment="right" title="100%" id="webp-mx-c">
+                                                <font key="font" metaFont="miniSystem"/>
+                                                <color key="textColor" name="controlTextColor" catalog="System" colorSpace="catalog"/>
+                                                <color key="backgroundColor" name="controlColor" catalog="System" colorSpace="catalog"/>
+                                            </textFieldCell>
+                                            <connections>
+                                                <binding destination="300" name="textColor" keyPath="values.LossyEnabled" id="webp-mx-clr">
+                                                    <dictionary key="options">
+                                                        <bool key="NSRaisesForNotApplicableKeys" value="NO"/>
+                                                        <string key="NSValueTransformerName">DisabledColor</string>
+                                                    </dictionary>
+                                                </binding>
+                                            </connections>
+                                        </textField>
                                     </subviews>
                                     <constraints>
                                         <constraint firstItem="230" firstAttribute="leading" secondItem="188" secondAttribute="leading" id="0DR-hc-gbR"/>
@@ -821,12 +1165,55 @@
                                         <constraint firstAttribute="trailing" relation="greaterThanOrEqual" secondItem="yIu-do-gJk" secondAttribute="trailing" constant="20" symbolic="YES" id="zNn-x2-bYP"/>
                                         <constraint firstItem="z4S-g9-Q0f" firstAttribute="baseline" secondItem="5Ah-J5-74w" secondAttribute="baseline" id="zOZ-EE-90V"/>
                                         <constraint firstItem="I4L-mY-Pzx" firstAttribute="bottom" secondItem="Dmk-FL-ezg" secondAttribute="bottom" id="zUL-8V-ILS"/>
+                                        <constraint firstItem="jxl-label" firstAttribute="baseline" secondItem="jxl-slider" secondAttribute="baseline" id="jxl-c1"/>
+                                        <constraint firstItem="jxl-slider" firstAttribute="leading" secondItem="188" secondAttribute="leading" id="jxl-c2"/>
+                                        <constraint firstItem="jxl-slider" firstAttribute="trailing" secondItem="188" secondAttribute="trailing" id="jxl-c3"/>
+                                        <constraint firstItem="jxl-slider" firstAttribute="top" secondItem="Kib-kQ-AW2" secondAttribute="bottom" constant="16" id="jxl-c4"/>
+                                        <constraint firstItem="jxl-value" firstAttribute="leading" secondItem="jxl-slider" secondAttribute="trailing" constant="8" id="jxl-c5"/>
+                                        <constraint firstItem="jxl-value" firstAttribute="baseline" secondItem="jxl-slider" secondAttribute="baseline" id="jxl-c6"/>
+                                        <constraint firstItem="jxl-min" firstAttribute="leading" secondItem="jxl-slider" secondAttribute="leading" id="jxl-c7"/>
+                                        <constraint firstItem="jxl-min" firstAttribute="top" secondItem="jxl-slider" secondAttribute="bottom" constant="8" id="jxl-c8"/>
+                                        <constraint firstItem="jxl-mid" firstAttribute="centerX" secondItem="jxl-slider" secondAttribute="centerX" id="jxl-c9"/>
+                                        <constraint firstItem="jxl-mid" firstAttribute="bottom" secondItem="jxl-min" secondAttribute="bottom" id="jxl-c10"/>
+                                        <constraint firstItem="jxl-max" firstAttribute="trailing" secondItem="jxl-slider" secondAttribute="trailing" id="jxl-c11"/>
+                                        <constraint firstItem="jxl-max" firstAttribute="bottom" secondItem="jxl-min" secondAttribute="bottom" id="jxl-c12"/>
+                                        <constraint firstItem="jxl-label" firstAttribute="trailing" secondItem="189" secondAttribute="trailing" id="jxl-c13"/>
+                                        <constraint firstAttribute="trailing" secondItem="jxl-value" secondAttribute="trailing" constant="24" id="jxl-c14"/>
+                                        <!-- AVIF/WebP row: half-width side by side, below JXL -->
+                                        <constraint firstItem="avif-slider" firstAttribute="top" secondItem="jxl-min" secondAttribute="bottom" constant="16" id="aw-c1"/>
+                                        <constraint firstItem="avif-label" firstAttribute="trailing" secondItem="189" secondAttribute="trailing" id="aw-c2"/>
+                                        <constraint firstItem="avif-label" firstAttribute="baseline" secondItem="avif-slider" secondAttribute="baseline" id="aw-c3"/>
+                                        <constraint firstItem="avif-slider" firstAttribute="leading" secondItem="avif-label" secondAttribute="trailing" constant="8" id="aw-c4"/>
+                                        <constraint firstItem="avif-slider" firstAttribute="width" secondItem="webp-slider" secondAttribute="width" id="aw-c5"/>
+                                        <constraint firstItem="webp-slider" firstAttribute="top" secondItem="avif-slider" secondAttribute="top" id="aw-c6"/>
+                                        <constraint firstItem="webp-slider" firstAttribute="trailing" secondItem="188" secondAttribute="trailing" id="aw-c7"/>
+                                        <constraint firstItem="avif-value" firstAttribute="leading" secondItem="avif-slider" secondAttribute="trailing" constant="8" id="aw-c8"/>
+                                        <constraint firstItem="avif-value" firstAttribute="baseline" secondItem="avif-slider" secondAttribute="baseline" id="aw-c9"/>
+                                        <constraint firstItem="webp-label" firstAttribute="leading" secondItem="avif-value" secondAttribute="trailing" constant="12" id="aw-c10"/>
+                                        <constraint firstItem="webp-label" firstAttribute="baseline" secondItem="webp-slider" secondAttribute="baseline" id="aw-c11"/>
+                                        <constraint firstItem="webp-slider" firstAttribute="leading" secondItem="webp-label" secondAttribute="trailing" constant="8" id="aw-c12"/>
+                                        <constraint firstItem="webp-value" firstAttribute="leading" secondItem="webp-slider" secondAttribute="trailing" constant="8" id="aw-c13"/>
+                                        <constraint firstItem="webp-value" firstAttribute="baseline" secondItem="webp-slider" secondAttribute="baseline" id="aw-c14"/>
+                                        <constraint firstAttribute="trailing" secondItem="webp-value" secondAttribute="trailing" constant="24" id="aw-c15"/>
+                                        <constraint firstItem="avif-label" firstAttribute="leading" relation="greaterThanOrEqual" secondItem="178" secondAttribute="leading" constant="12" id="aw-c16"/>
+                                        <constraint firstItem="avif-min" firstAttribute="leading" secondItem="avif-slider" secondAttribute="leading" id="aw-c18"/>
+                                        <constraint firstItem="avif-min" firstAttribute="top" secondItem="avif-slider" secondAttribute="bottom" constant="8" id="aw-c19"/>
+                                        <constraint firstItem="avif-mid" firstAttribute="centerX" secondItem="avif-slider" secondAttribute="centerX" id="aw-c20"/>
+                                        <constraint firstItem="avif-mid" firstAttribute="bottom" secondItem="avif-min" secondAttribute="bottom" id="aw-c21"/>
+                                        <constraint firstItem="avif-max" firstAttribute="trailing" secondItem="avif-slider" secondAttribute="trailing" id="aw-c22"/>
+                                        <constraint firstItem="avif-max" firstAttribute="bottom" secondItem="avif-min" secondAttribute="bottom" id="aw-c23"/>
+                                        <constraint firstItem="webp-min" firstAttribute="leading" secondItem="webp-slider" secondAttribute="leading" id="aw-c24"/>
+                                        <constraint firstItem="webp-min" firstAttribute="top" secondItem="webp-slider" secondAttribute="bottom" constant="8" id="aw-c25"/>
+                                        <constraint firstItem="webp-mid" firstAttribute="centerX" secondItem="webp-slider" secondAttribute="centerX" id="aw-c26"/>
+                                        <constraint firstItem="webp-mid" firstAttribute="bottom" secondItem="webp-min" secondAttribute="bottom" id="aw-c27"/>
+                                        <constraint firstItem="webp-max" firstAttribute="trailing" secondItem="webp-slider" secondAttribute="trailing" id="aw-c28"/>
+                                        <constraint firstItem="webp-max" firstAttribute="bottom" secondItem="webp-min" secondAttribute="bottom" id="aw-c29"/>
                                     </constraints>
                                 </view>
                             </tabViewItem>
                             <tabViewItem label="Optimization speed" identifier="" id="168">
                                 <view key="view" id="170">
-                                    <rect key="frame" x="10" y="33" width="617" height="314"/>
+                                    <rect key="frame" x="10" y="33" width="617" height="434"/>
                                     <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
                                     <subviews>
                                         <slider verticalHuggingPriority="750" translatesAutoresizingMaskIntoConstraints="NO" id="249">

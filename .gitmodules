@@ -16,3 +16,9 @@
 [submodule "libjpeg/src"]
 	path = libjpeg/src
 	url = https://github.com/libjxl/libjxl.git
+[submodule "libwebp/src"]
+	path = libwebp/src
+	url = https://github.com/webmproject/libwebp.git
+[submodule "libavif/src"]
+	path = libavif/src
+	url = https://github.com/AOMediaCodec/libavif.git

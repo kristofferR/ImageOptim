@@ -40,15 +40,11 @@
 	<true/>
 	<key>BounceDock</key>
 	<true/>
-	<key>TargetWidth</key>
-	<integer>0</integer>
-	<key>TargetHeight</key>
-	<integer>0</integer>
-	<key>ResizeMode</key>
-	<integer>0</integer>
-	<key>OutputFormat</key>
-	<integer>0</integer>
-	<key>OutputQuality</key>
-	<real>0.85</real>
+	<key>JxlQuality</key>
+	<integer>85</integer>
+	<key>AvifQuality</key>
+	<integer>85</integer>
+	<key>WebpQuality</key>
+	<integer>85</integer>
 </dict>
 </plist>

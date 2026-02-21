@@ -31,7 +31,12 @@
     const unsigned char jpegheader[] = {0xff,0xd8,0xff};
     const unsigned char gifheader[] = {0x47,0x49,0x46,0x38};
     const unsigned char svgheader[] = {'<','s','v','g'};
-    char fileHeaderBytes[6];
+    const unsigned char jxlheader[] = {0xff,0x0a};
+    const unsigned char jxlcontainer[] = {0x00,0x00,0x00,0x0c,'J','X','L',' '};
+    const unsigned char riffheader[] = {'R','I','F','F'};
+    const unsigned char webpmagic[] = {'W','E','B','P'};
+    const unsigned char ftypmagic[] = {'f','t','y','p'};
+    unsigned char fileHeaderBytes[12];
 
     if (!fileData || fileData.length < sizeof(fileHeaderBytes)) {
         return nil;
@@ -49,6 +54,12 @@
         type = FILETYPE_GIF;
     } else if (0 == memcmp(fileHeaderBytes, svgheader, sizeof(svgheader)) || [aPath.pathExtension isEqualToString:@"svg"]) {
         type = FILETYPE_SVG;
+    } else if (0 == memcmp(fileHeaderBytes, jxlheader, sizeof(jxlheader)) || 0 == memcmp(fileHeaderBytes, jxlcontainer, sizeof(jxlcontainer))) {
+        type = FILETYPE_JXL;
+    } else if (0 == memcmp(fileHeaderBytes, riffheader, sizeof(riffheader)) && 0 == memcmp(fileHeaderBytes + 8, webpmagic, sizeof(webpmagic))) {
+        type = FILETYPE_WEBP;
+    } else if (0 == memcmp(fileHeaderBytes + 4, ftypmagic, sizeof(ftypmagic))) {
+        type = FILETYPE_AVIF;
     }
 
     return [self initWithType:type size:fileData.length fromPath:aPath];
@@ -108,6 +119,9 @@
         case FILETYPE_JPEG: return @"image/jpeg";
         case FILETYPE_GIF: return @"image/gif";
         case FILETYPE_SVG: return @"image/svg";
+        case FILETYPE_AVIF: return @"image/avif";
+        case FILETYPE_WEBP: return @"image/webp";
+        case FILETYPE_JXL: return @"image/jxl";
         default:
             return nil;
     }

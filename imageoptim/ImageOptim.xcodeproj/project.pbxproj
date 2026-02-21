@@ -44,6 +44,15 @@
 		5A7D24EF13E5BC3100815AAA /* defaults.plist in Resources */ = {isa = PBXBuildFile; fileRef = 5AE54D800CAEE8AC00903DF4 /* defaults.plist */; };
 		5A7FB6D71E2C37DD00481B4A /* SvgoWorker.h in Headers */ = {isa = PBXBuildFile; fileRef = 5A7FB6D61E2C37DD00481B4A /* SvgoWorker.h */; };
 		5A7FB6F31E2C37EB00481B4A /* SvgoWorker.m in Sources */ = {isa = PBXBuildFile; fileRef = 5A7FB6F21E2C37EB00481B4A /* SvgoWorker.m */; };
+		AA000001000000000000B001 /* WebPWorker.m in Sources */ = {isa = PBXBuildFile; fileRef = AA000001000000000000A001 /* WebPWorker.m */; };
+		AA000002000000000000B002 /* JXLWorker.m in Sources */ = {isa = PBXBuildFile; fileRef = AA000002000000000000A002 /* JXLWorker.m */; };
+		AA000003000000000000B003 /* AVIFWorker.m in Sources */ = {isa = PBXBuildFile; fileRef = AA000003000000000000A003 /* AVIFWorker.m */; };
+		BB0000010000000000000011 /* cwebp in CopyFiles */ = {isa = PBXBuildFile; fileRef = BB0000010000000000000001 /* cwebp */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
+		BB0000020000000000000012 /* dwebp in CopyFiles */ = {isa = PBXBuildFile; fileRef = BB0000020000000000000002 /* dwebp */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
+		BB0000030000000000000013 /* cjxl in CopyFiles */ = {isa = PBXBuildFile; fileRef = BB0000030000000000000003 /* cjxl */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
+		BB0000040000000000000014 /* djxl in CopyFiles */ = {isa = PBXBuildFile; fileRef = BB0000040000000000000004 /* djxl */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
+		BB0000050000000000000015 /* avifenc in CopyFiles */ = {isa = PBXBuildFile; fileRef = BB0000050000000000000005 /* avifenc */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
+		BB0000060000000000000016 /* avifdec in CopyFiles */ = {isa = PBXBuildFile; fileRef = BB0000060000000000000006 /* avifdec */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
 		5A7FB7261E2C3E1600481B4A /* svgo.js in CopyFiles */ = {isa = PBXBuildFile; fileRef = 5A7FB7251E2C3E1600481B4A /* svgo.js */; };
 		5A99FE84140AE80600BB2F79 /* Quartz.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 5A99FE83140AE80600BB2F79 /* Quartz.framework */; };
 		5AA1B7E9140AC55F00B5707C /* RevealButtonCell.m in Sources */ = {isa = PBXBuildFile; fileRef = 5A391880140A9B10001B4FD7 /* RevealButtonCell.m */; };
@@ -93,15 +102,6 @@
 		5FFC96C1275842310035D0A2 /* oxipng in CopyFiles */ = {isa = PBXBuildFile; fileRef = 5F75B47527583B9B0072F27A /* oxipng */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
 		8D11072D0486CEB800E47090 /* main.m in Sources */ = {isa = PBXBuildFile; fileRef = 29B97316FDCFA39411CA2CEA /* main.m */; settings = {ATTRIBUTES = (); }; };
 		A52E48725A2903DB8006D01F /* Pods_ImageOptim.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 40C12C0D6E1ABC1BDAA9917E /* Pods_ImageOptim.framework */; };
-		DD000001000000000000B001 /* ImageProcessor.m in Sources */ = {isa = PBXBuildFile; fileRef = DD000001000000000000A001 /* ImageProcessor.m */; };
-		DD000002000000000000B002 /* PostProcessWorker.m in Sources */ = {isa = PBXBuildFile; fileRef = DD000002000000000000A002 /* PostProcessWorker.m */; };
-		DD000003000000000000B003 /* PreProcessWorker.m in Sources */ = {isa = PBXBuildFile; fileRef = DD000003000000000000A003 /* PreProcessWorker.m */; };
-		DD000004000000000000B004 /* FormatConverterFactory.m in Sources */ = {isa = PBXBuildFile; fileRef = DD000004000000000000A004 /* FormatConverterFactory.m */; };
-		DD000005000000000000B005 /* AVIFConverter.m in Sources */ = {isa = PBXBuildFile; fileRef = DD000005000000000000A005 /* AVIFConverter.m */; };
-		DD000006000000000000B006 /* JXLConverter.m in Sources */ = {isa = PBXBuildFile; fileRef = DD000006000000000000A006 /* JXLConverter.m */; };
-		DD000007000000000000B007 /* WebPConverter.m in Sources */ = {isa = PBXBuildFile; fileRef = DD000007000000000000A007 /* WebPConverter.m */; };
-		DD000008000000000000B008 /* EnhancedPrefsController.m in Sources */ = {isa = PBXBuildFile; fileRef = DD000008000000000000A008 /* EnhancedPrefsController.m */; };
-		DD000009000000000000B009 /* EnhancedPrefsController.xib in Resources */ = {isa = PBXBuildFile; fileRef = DD000009000000000000A009 /* EnhancedPrefsController.xib */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -390,6 +390,12 @@
 				5ABE15841AE5074900861C6B /* pngout in CopyFiles */,
 				5F91633A2ADB7A7B00230D34 /* pngquant in CopyFiles */,
 				5A7FB7261E2C3E1600481B4A /* svgo.js in CopyFiles */,
+				BB0000010000000000000011 /* cwebp in CopyFiles */,
+				BB0000020000000000000012 /* dwebp in CopyFiles */,
+				BB0000030000000000000013 /* cjxl in CopyFiles */,
+				BB0000040000000000000014 /* djxl in CopyFiles */,
+				BB0000050000000000000015 /* avifenc in CopyFiles */,
+				BB0000060000000000000016 /* avifdec in CopyFiles */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -541,6 +547,12 @@
 		5A7F3E1C1EB7421700E94752 /* uk */ = {isa = PBXFileReference; lastKnownFileType = folder; name = uk; path = uk.lproj/Help; sourceTree = "<group>"; };
 		5A7FB6D61E2C37DD00481B4A /* SvgoWorker.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SvgoWorker.h; sourceTree = "<group>"; };
 		5A7FB6F21E2C37EB00481B4A /* SvgoWorker.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = SvgoWorker.m; sourceTree = "<group>"; };
+		AA000001000000000000A001 /* WebPWorker.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = WebPWorker.m; sourceTree = "<group>"; };
+		AA000001000000000000A011 /* WebPWorker.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = WebPWorker.h; sourceTree = "<group>"; };
+		AA000002000000000000A002 /* JXLWorker.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = JXLWorker.m; sourceTree = "<group>"; };
+		AA000002000000000000A012 /* JXLWorker.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = JXLWorker.h; sourceTree = "<group>"; };
+		AA000003000000000000A003 /* AVIFWorker.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = AVIFWorker.m; sourceTree = "<group>"; };
+		AA000003000000000000A013 /* AVIFWorker.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = AVIFWorker.h; sourceTree = "<group>"; };
 		5A7FB7251E2C3E1600481B4A /* svgo.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; name = svgo.js; path = ../../svgo/build/svgo.js; sourceTree = "<group>"; };
 		5A8167EC0EA11F9D00962CF2 /* jpegoptim.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; name = jpegoptim.xcodeproj; path = ../jpegoptim/jpegoptim.xcodeproj; sourceTree = "<group>"; };
 		5A89F7DA1B64FFBC00F4C0B6 /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/ImageOptim.strings; sourceTree = "<group>"; };
@@ -658,6 +670,12 @@
 		5AEF1B1D10F2BCA900E3E4F0 /* AppKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AppKit.framework; path = System/Library/Frameworks/AppKit.framework; sourceTree = SDKROOT; };
 		5AEF1B2110F2BCB200E3E4F0 /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = System/Library/Frameworks/Foundation.framework; sourceTree = SDKROOT; };
 		5AF71642174AF7C30018D3FE /* pngout */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.executable"; name = pngout; path = ../pngout; sourceTree = "<group>"; };
+		BB0000010000000000000001 /* cwebp */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.executable"; name = cwebp; path = ../../libwebp/build/cwebp; sourceTree = "<group>"; };
+		BB0000020000000000000002 /* dwebp */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.executable"; name = dwebp; path = ../../libwebp/build/dwebp; sourceTree = "<group>"; };
+		BB0000030000000000000003 /* cjxl */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.executable"; name = cjxl; path = ../../libjpeg/build-tools/cjxl; sourceTree = "<group>"; };
+		BB0000040000000000000004 /* djxl */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.executable"; name = djxl; path = ../../libjpeg/build-tools/djxl; sourceTree = "<group>"; };
+		BB0000050000000000000005 /* avifenc */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.executable"; name = avifenc; path = ../../libavif/build/avifenc; sourceTree = "<group>"; };
+		BB0000060000000000000006 /* avifdec */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.executable"; name = avifdec; path = ../../libavif/build/avifdec; sourceTree = "<group>"; };
 		5AF8536A1B49F21C00CF76F5 /* FadeView.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FadeView.h; sourceTree = "<group>"; };
 		5AF8536B1B49F21C00CF76F5 /* FadeView.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = FadeView.m; sourceTree = "<group>"; };
 		5FD569DB21A059A000BC9F82 /* JobProxy.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = JobProxy.h; sourceTree = "<group>"; };
@@ -669,23 +687,6 @@
 		F8C4ABCF1755C91B004FC041 /* ko */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = ko; path = ko.lproj/Localizable.strings; sourceTree = "<group>"; };
 		F8C4ABD01755C91B004FC041 /* ko */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = ko; path = ko.lproj/ImageOptim.strings; sourceTree = "<group>"; };
 		F8C4ABD11755C91B004FC041 /* ko */ = {isa = PBXFileReference; lastKnownFileType = file.plist.strings; name = ko; path = ko.lproj/PrefsController.strings; sourceTree = "<group>"; };
-		DD000001000000000000A001 /* ImageProcessor.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; name = ImageProcessor.m; path = Backend/ImageProcessor.m; sourceTree = "<group>"; };
-		DD000001000000000000A011 /* ImageProcessor.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = ImageProcessor.h; path = Backend/ImageProcessor.h; sourceTree = "<group>"; };
-		DD000002000000000000A002 /* PostProcessWorker.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = PostProcessWorker.m; sourceTree = "<group>"; };
-		DD000002000000000000A012 /* PostProcessWorker.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = PostProcessWorker.h; sourceTree = "<group>"; };
-		DD000003000000000000A003 /* PreProcessWorker.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = PreProcessWorker.m; sourceTree = "<group>"; };
-		DD000003000000000000A013 /* PreProcessWorker.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = PreProcessWorker.h; sourceTree = "<group>"; };
-		DD000004000000000000A004 /* FormatConverterFactory.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = FormatConverterFactory.m; sourceTree = "<group>"; };
-		DD000004000000000000A014 /* FormatConverterFactory.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FormatConverterFactory.h; sourceTree = "<group>"; };
-		DD000005000000000000A005 /* AVIFConverter.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = AVIFConverter.m; sourceTree = "<group>"; };
-		DD000005000000000000A015 /* AVIFConverter.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = AVIFConverter.h; sourceTree = "<group>"; };
-		DD000006000000000000A006 /* JXLConverter.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = JXLConverter.m; sourceTree = "<group>"; };
-		DD000006000000000000A016 /* JXLConverter.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = JXLConverter.h; sourceTree = "<group>"; };
-		DD000007000000000000A007 /* WebPConverter.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = WebPConverter.m; sourceTree = "<group>"; };
-		DD000007000000000000A017 /* WebPConverter.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = WebPConverter.h; sourceTree = "<group>"; };
-		DD000008000000000000A008 /* EnhancedPrefsController.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = EnhancedPrefsController.m; sourceTree = "<group>"; };
-		DD000008000000000000A018 /* EnhancedPrefsController.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = EnhancedPrefsController.h; sourceTree = "<group>"; };
-		DD000009000000000000A009 /* EnhancedPrefsController.xib */ = {isa = PBXFileReference; lastKnownFileType = file.xib; name = EnhancedPrefsController.xib; path = Base.lproj/EnhancedPrefsController.xib; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -756,9 +757,6 @@
 				5A1F3CEE1B489796006570E0 /* SharedPrefs.m */,
 				5AD0347A1E27185D0030291A /* TempFile.h */,
 				5AD0347B1E27185D0030291A /* TempFile.m */,
-				DD000001000000000000A011 /* ImageProcessor.h */,
-				DD000001000000000000A001 /* ImageProcessor.m */,
-				DD00000000000000FC000000 /* FormatConverters */,
 			);
 			name = Backend;
 			sourceTree = "<group>";
@@ -958,9 +956,6 @@
 				5A714AAC0CB0196A00C242C0 /* MyTableView.m */,
 				5A6242060CA86DC7005942A3 /* PrefsController.h */,
 				5A6242070CA86DC7005942A3 /* PrefsController.m */,
-				DD000008000000000000A018 /* EnhancedPrefsController.h */,
-				DD000008000000000000A008 /* EnhancedPrefsController.m */,
-				DD000009000000000000A009 /* EnhancedPrefsController.xib */,
 				5A391882140A9B19001B4FD7 /* RevealButtonCell.h */,
 				5A391880140A9B10001B4FD7 /* RevealButtonCell.m */,
 				5AACA82F0CAFE74E004D45CA /* Transformers.h */,
@@ -973,6 +968,12 @@
 			isa = PBXGroup;
 			children = (
 				5AF71642174AF7C30018D3FE /* pngout */,
+				BB0000010000000000000001 /* cwebp */,
+				BB0000020000000000000002 /* dwebp */,
+				BB0000030000000000000003 /* cjxl */,
+				BB0000040000000000000004 /* djxl */,
+				BB0000050000000000000005 /* avifenc */,
+				BB0000060000000000000006 /* avifdec */,
 				5ABE15451AE5072300861C6B /* Info.plist */,
 				5A7FB7251E2C3E1600481B4A /* svgo.js */,
 			);
@@ -1043,31 +1044,17 @@
 				5AB81F941AE1BE1300719AB7 /* Save.m */,
 				5A7FB6D61E2C37DD00481B4A /* SvgoWorker.h */,
 				5A7FB6F21E2C37EB00481B4A /* SvgoWorker.m */,
+				AA000001000000000000A011 /* WebPWorker.h */,
+				AA000001000000000000A001 /* WebPWorker.m */,
+				AA000002000000000000A012 /* JXLWorker.h */,
+				AA000002000000000000A002 /* JXLWorker.m */,
+				AA000003000000000000A013 /* AVIFWorker.h */,
+				AA000003000000000000A003 /* AVIFWorker.m */,
 				5AACA13D0CAF241B004D45CA /* Worker.h */,
 				5AACA13E0CAF241B004D45CA /* Worker.m */,
-				DD000002000000000000A012 /* PostProcessWorker.h */,
-				DD000002000000000000A002 /* PostProcessWorker.m */,
-				DD000003000000000000A013 /* PreProcessWorker.h */,
-				DD000003000000000000A003 /* PreProcessWorker.m */,
 			);
 			name = Workers;
 			path = Backend/Workers;
-			sourceTree = "<group>";
-		};
-		DD00000000000000FC000000 /* FormatConverters */ = {
-			isa = PBXGroup;
-			children = (
-				DD000004000000000000A014 /* FormatConverterFactory.h */,
-				DD000004000000000000A004 /* FormatConverterFactory.m */,
-				DD000005000000000000A015 /* AVIFConverter.h */,
-				DD000005000000000000A005 /* AVIFConverter.m */,
-				DD000006000000000000A016 /* JXLConverter.h */,
-				DD000006000000000000A006 /* JXLConverter.m */,
-				DD000007000000000000A017 /* WebPConverter.h */,
-				DD000007000000000000A007 /* WebPConverter.m */,
-			);
-			name = FormatConverters;
-			path = Backend/FormatConverters;
 			sourceTree = "<group>";
 		};
 		5AF9013A0ED8D68200F3965B /* Sparkle */ = {
@@ -1145,6 +1132,7 @@
 				5ABE153D1AE5072300861C6B /* Sources */,
 				5ABE153E1AE5072300861C6B /* Frameworks */,
 				5ABE153F1AE5072300861C6B /* Headers */,
+				BB0000070000000000000020 /* Build Format Tools */,
 				5A5C88511B4E7DCA00BF10B0 /* CopyFiles */,
 			);
 			buildRules = (
@@ -1520,7 +1508,6 @@
 				5A7D24E913E5BC3100815AAA /* ok.png in Resources */,
 				5A0A24F117492D39003264CC /* ok@2x.png in Resources */,
 				5A7D24E213E5BC3100815AAA /* PrefsController.xib in Resources */,
-				DD000009000000000000B009 /* EnhancedPrefsController.xib in Resources */,
 				5A7D24EA13E5BC3100815AAA /* progress.png in Resources */,
 				5A0A24F817494254003264CC /* progress@2x.png in Resources */,
 				5A1D3E8C14366933004EE809 /* style.css in Resources */,
@@ -1564,6 +1551,25 @@
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
 			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-ImageOptim/Pods-ImageOptim-frameworks.sh\"\n";
+			showEnvVarsInLog = 0;
+		};
+		BB0000070000000000000020 /* Build Format Tools */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			name = "Build Format Tools";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "\"${SRCROOT}/../libjpeg/build-jxl-tools.sh\"\n\"${SRCROOT}/../libwebp/build-webp.sh\"\n\"${SRCROOT}/../libavif/build-avif.sh\"\n";
 			showEnvVarsInLog = 0;
 		};
 		EB914242222205F054147613 /* [CP] Check Pods Manifest.lock */ = {
@@ -1613,15 +1619,11 @@
 				5AC4CC801AF568E90003AEA2 /* SavingsFormatter.m in Sources */,
 				5A6A56D01B497E210045AA0C /* SharedPrefs.m in Sources */,
 				5A7FB6F31E2C37EB00481B4A /* SvgoWorker.m in Sources */,
+				AA000001000000000000B001 /* WebPWorker.m in Sources */,
+				AA000002000000000000B002 /* JXLWorker.m in Sources */,
+				AA000003000000000000B003 /* AVIFWorker.m in Sources */,
 				5AD0347D1E27185D0030291A /* TempFile.m in Sources */,
 				5ABE15821AE5073E00861C6B /* Worker.m in Sources */,
-				DD000001000000000000B001 /* ImageProcessor.m in Sources */,
-				DD000002000000000000B002 /* PostProcessWorker.m in Sources */,
-				DD000003000000000000B003 /* PreProcessWorker.m in Sources */,
-				DD000004000000000000B004 /* FormatConverterFactory.m in Sources */,
-				DD000005000000000000B005 /* AVIFConverter.m in Sources */,
-				DD000006000000000000B006 /* JXLConverter.m in Sources */,
-				DD000007000000000000B007 /* WebPConverter.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -1654,7 +1656,6 @@
 				8D11072D0486CEB800E47090 /* main.m in Sources */,
 				5A714AAD0CB0196A00C242C0 /* MyTableView.m in Sources */,
 				5A6242080CA86DC7005942A3 /* PrefsController.m in Sources */,
-				DD000008000000000000B008 /* EnhancedPrefsController.m in Sources */,
 				5AA1B7E9140AC55F00B5707C /* RevealButtonCell.m in Sources */,
 				5AACA8310CAFE74E004D45CA /* Transformers.m in Sources */,
 			);

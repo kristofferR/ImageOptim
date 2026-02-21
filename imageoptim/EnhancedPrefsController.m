@@ -12,7 +12,7 @@
 @implementation EnhancedPrefsController
 
 - (instancetype)init {
-    if ((self = [super initWithWindowNibName:@"EnhancedPrefsController"])) {
+    if ((self = [super init])) {
         // Additional initialization if needed
     }
     return self;
@@ -20,20 +20,20 @@
 
 - (void)awakeFromNib {
     [super awakeFromNib];
-    
+
     // Setup resize mode popup
     [self.resizeModePopup removeAllItems];
     [self.resizeModePopup addItemWithTitle:@"No Resize"];
     [self.resizeModePopup addItemWithTitle:@"Resize by Width"];
     [self.resizeModePopup addItemWithTitle:@"Resize by Height"];
     [self.resizeModePopup addItemWithTitle:@"Fit to Dimensions"];
-    
+
     // Setup output format popup
     [self.outputFormatPopup removeAllItems];
-    
+
     NSArray *formatTitles = @[@"Keep Original", @"JPEG", @"PNG", @"AVIF", @"WebP", @"JPEG XL"];
     NSArray<NSNumber *> *supportedFormats = [FormatConverterFactory supportedFormats];
-    
+
     for (NSInteger i = 0; i < formatTitles.count; i++) {
         NSNumber *formatNumber = @(i);
         if ([supportedFormats containsObject:formatNumber]) {
@@ -50,35 +50,35 @@
             [self.outputFormatPopup addItemWithTitle:title];
         }
     }
-    
+
     // Bind controls to user defaults
     NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
-    
-    [self.targetWidthField bind:@"value" 
-                       toObject:defaults 
-                    withKeyPath:@"TargetWidth" 
+
+    [self.targetWidthField bind:@"value"
+                       toObject:defaults
+                    withKeyPath:@"TargetWidth"
                         options:@{NSNullPlaceholderBindingOption: @""}];
-    
-    [self.targetHeightField bind:@"value" 
-                        toObject:defaults 
-                     withKeyPath:@"TargetHeight" 
+
+    [self.targetHeightField bind:@"value"
+                        toObject:defaults
+                     withKeyPath:@"TargetHeight"
                          options:@{NSNullPlaceholderBindingOption: @""}];
-    
-    [self.resizeModePopup bind:@"selectedIndex" 
-                      toObject:defaults 
-                   withKeyPath:@"ResizeMode" 
+
+    [self.resizeModePopup bind:@"selectedIndex"
+                      toObject:defaults
+                   withKeyPath:@"ResizeMode"
                        options:nil];
-    
-    [self.outputFormatPopup bind:@"selectedIndex" 
-                        toObject:defaults 
-                     withKeyPath:@"OutputFormat" 
+
+    [self.outputFormatPopup bind:@"selectedIndex"
+                        toObject:defaults
+                     withKeyPath:@"OutputFormat"
                            options:nil];
-    
-    [self.outputQualitySlider bind:@"value" 
-                          toObject:defaults 
-                       withKeyPath:@"OutputQuality" 
+
+    [self.outputQualitySlider bind:@"value"
+                          toObject:defaults
+                       withKeyPath:@"OutputQuality"
                            options:nil];
-    
+
     [self updateQualityLabel];
     [self updateControlStates];
 }
@@ -98,14 +98,14 @@
 - (void)updateControlStates {
     NSInteger resizeMode = self.resizeModePopup.indexOfSelectedItem;
     NSInteger outputFormat = self.outputFormatPopup.indexOfSelectedItem;
-    
+
     // Enable/disable resize fields based on mode
     BOOL enableWidth = (resizeMode == 1 || resizeMode == 3); // Width or Fit
     BOOL enableHeight = (resizeMode == 2 || resizeMode == 3); // Height or Fit
-    
+
     self.targetWidthField.enabled = enableWidth;
     self.targetHeightField.enabled = enableHeight;
-    
+
     // Enable/disable quality slider based on format
     BOOL enableQuality = (outputFormat == 1 || outputFormat >= 3); // JPEG, AVIF, WebP, JXL
     self.outputQualitySlider.enabled = enableQuality;

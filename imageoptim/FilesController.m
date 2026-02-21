@@ -279,15 +279,6 @@ static NSString *kIMDraggedRowIndexesPboardType = @"com.imageoptim.rows";
         return NO;
     }
     
-    // Get processing settings from user defaults
-    NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
-    NSInteger targetWidth = [defaults integerForKey:@"TargetWidth"];
-    NSInteger targetHeight = [defaults integerForKey:@"TargetHeight"];
-    NSInteger resizeMode = [defaults integerForKey:@"ResizeMode"];
-    NSInteger outputFormat = [defaults integerForKey:@"OutputFormat"];
-    CGFloat outputQuality = [defaults doubleForKey:@"OutputQuality"];
-    if (outputQuality <= 0) outputQuality = 0.85; // Default quality
-
     NSMutableArray<JobProxy *> *toAdd = [NSMutableArray arrayWithCapacity:[paths count]];
 
     BOOL allOK = YES;
@@ -318,14 +309,6 @@ static NSString *kIMDraggedRowIndexesPboardType = @"com.imageoptim.rows";
             } else {
                 [seenPathHashes addObject:path]; // used by findFileByPath
                 Job *f = [[Job alloc] initWithFilePath:path resultsDatabase:db];
-                
-                // Apply processing settings to the job
-                f.targetWidth = targetWidth;
-                f.targetHeight = targetHeight;
-                f.resizeMode = resizeMode;
-                f.outputFormat = outputFormat;
-                f.outputQuality = outputQuality;
-
                 JobProxy *jobProxy = [[JobProxy alloc] initWithJob:f];
                 [toAdd addObject:jobProxy];
                 [jobQueue addJob:f];
@@ -523,6 +506,8 @@ static NSString *kIMDraggedRowIndexesPboardType = @"com.imageoptim.rows";
         [extensions addObject:@"svg"];
     }
 
+    [extensions addObjectsFromArray:@[ @"avif", @"AVIF", @"webp", @"WEBP", @"jxl", @"JXL" ]];
+
     return extensions;
 }
 
@@ -543,6 +528,7 @@ static NSString *kIMDraggedRowIndexesPboardType = @"com.imageoptim.rows";
     if (types & SVG_ENABLED) {
         [fileTypes addObjectsFromArray:@[ @"svg", @"public.svg-image", @"image/svg" ]];
     }
+    [fileTypes addObjectsFromArray:@[ @"avif", @"AVIF", @"image/avif", @"webp", @"WEBP", @"image/webp", @"jxl", @"JXL", @"image/jxl" ]];
     return fileTypes;
 }
 

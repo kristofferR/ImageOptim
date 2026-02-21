@@ -5,7 +5,7 @@
 #import "JobProxy.h"
 #import "File.h"
 #import "Backend/Workers/Worker.h"
-#import "EnhancedPrefsController.h"
+#import "PrefsController.h"
 #import "MyTableView.h"
 #import "SharedPrefs.h"
 #include <mach/mach_host.h>
@@ -185,6 +185,9 @@ static void appendFormatNameIfLossyEnabled(NSUserDefaults *defs, NSString *name,
                 appendFormatNameIfLossyEnabled(defs, @"JPEG", @"JpegOptimMaxQuality", arr);
                 appendFormatNameIfLossyEnabled(defs, @"PNG", @"PngMinQuality", arr);
                 appendFormatNameIfLossyEnabled(defs, @"GIF", @"GifQuality", arr);
+                appendFormatNameIfLossyEnabled(defs, @"AVIF", @"AvifQuality", arr);
+                appendFormatNameIfLossyEnabled(defs, @"WebP", @"WebpQuality", arr);
+                appendFormatNameIfLossyEnabled(defs, @"JPEG XL", @"JxlQuality", arr);
                 if ([arr count]) {
                     str = [NSString stringWithFormat:@"%@ (%@)",
                                                      NSLocalizedString(@"Lossy minification enabled", @"status bar"),
@@ -343,14 +346,14 @@ static void appendFormatNameIfLossyEnabled(NSUserDefaults *defs, NSString *name,
 
 - (IBAction)showPrefs:(id)sender {
     if (!prefsController) {
-        prefsController = [EnhancedPrefsController new];
+        prefsController = [PrefsController new];
     }
     [prefsController showWindow:self];
 }
 
 - (IBAction)showLossyPrefs:(id)sender {
     if (!prefsController) {
-        prefsController = [EnhancedPrefsController new];
+        prefsController = [PrefsController new];
     }
     [prefsController showLossySettings:sender];
 }
