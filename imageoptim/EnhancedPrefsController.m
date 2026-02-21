@@ -107,7 +107,7 @@
     self.targetHeightField.enabled = enableHeight;
     
     // Enable/disable quality slider based on format
-    BOOL enableQuality = (outputFormat == 1); // JPEG
+    BOOL enableQuality = (outputFormat == 1 || outputFormat >= 3); // JPEG, AVIF, WebP, JXL
     self.outputQualitySlider.enabled = enableQuality;
     self.outputQualityLabel.enabled = enableQuality;
 }
