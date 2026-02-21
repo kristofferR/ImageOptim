@@ -287,24 +287,6 @@ static NSString *kIMDraggedRowIndexesPboardType = @"com.imageoptim.rows";
     NSInteger outputFormat = [defaults integerForKey:@"OutputFormat"];
     CGFloat outputQuality = [defaults doubleForKey:@"OutputQuality"];
     if (outputQuality <= 0) outputQuality = 0.85; // Default quality
-    
-    // Get processing settings from user defaults
-    NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
-    NSInteger targetWidth = [defaults integerForKey:@"TargetWidth"];
-    NSInteger targetHeight = [defaults integerForKey:@"TargetHeight"];
-    NSInteger resizeMode = [defaults integerForKey:@"ResizeMode"];
-    NSInteger outputFormat = [defaults integerForKey:@"OutputFormat"];
-    CGFloat outputQuality = [defaults doubleForKey:@"OutputQuality"];
-    if (outputQuality <= 0) outputQuality = 0.85; // Default quality
-    
-    // Get processing settings from user defaults
-    NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
-    NSInteger targetWidth = [defaults integerForKey:@"TargetWidth"];
-    NSInteger targetHeight = [defaults integerForKey:@"TargetHeight"];
-    NSInteger resizeMode = [defaults integerForKey:@"ResizeMode"];
-    NSInteger outputFormat = [defaults integerForKey:@"OutputFormat"];
-    CGFloat outputQuality = [defaults doubleForKey:@"OutputQuality"];
-    if (outputQuality <= 0) outputQuality = 0.85; // Default quality
 
     NSMutableArray<JobProxy *> *toAdd = [NSMutableArray arrayWithCapacity:[paths count]];
 
@@ -343,23 +325,7 @@ static NSString *kIMDraggedRowIndexesPboardType = @"com.imageoptim.rows";
                 f.resizeMode = resizeMode;
                 f.outputFormat = outputFormat;
                 f.outputQuality = outputQuality;
-                
-                
-                // Apply processing settings to the job
-                f.targetWidth = targetWidth;
-                f.targetHeight = targetHeight;
-                f.resizeMode = resizeMode;
-                f.outputFormat = outputFormat;
-                f.outputQuality = outputQuality;
-                
-                
-                // Apply processing settings to the job
-                f.targetWidth = targetWidth;
-                f.targetHeight = targetHeight;
-                f.resizeMode = resizeMode;
-                f.outputFormat = outputFormat;
-                f.outputQuality = outputQuality;
-                
+
                 JobProxy *jobProxy = [[JobProxy alloc] initWithJob:f];
                 [toAdd addObject:jobProxy];
                 [jobQueue addJob:f];
@@ -517,8 +483,8 @@ static NSString *kIMDraggedRowIndexesPboardType = @"com.imageoptim.rows";
     int types = 0;
     NSUserDefaults *defs = [NSUserDefaults standardUserDefaults];
 
-    if ([defs boolForKey:@"PngCrush2Enabled"] || [defs boolForKey:@"PngOutEnabled"] ||
-        [defs boolForKey:@"OptiPngEnabled"] || [defs boolForKey:@"AdvPngEnabled"] || [defs boolForKey:@"ZopfliEnabled"]) {
+    if ([defs boolForKey:@"PngOutEnabled"] ||
+        [defs boolForKey:@"OptiPngEnabled"] || [defs boolForKey:@"AdvPngEnabled"]) {
         types |= PNG_ENABLED;
     }
 
@@ -530,7 +496,7 @@ static NSString *kIMDraggedRowIndexesPboardType = @"com.imageoptim.rows";
         types |= GIF_ENABLED;
     }
 
-    if ([defs boolForKey:@"SvgoEnabled"] || [defs boolForKey:@"SvgcleanerEnabled"]) {
+    if ([defs boolForKey:@"SvgoEnabled"]) {
         types |= SVG_ENABLED;
     }
 

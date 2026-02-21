@@ -44,7 +44,7 @@
             return;
         }
 
-        NSLog(@"BearHug extension loading image");
+        NSLog(@"ImageOptim extension loading image");
         tempFilePath = [NSURL fileURLWithPath:[NSTemporaryDirectory() stringByAppendingPathComponent:[[NSUUID UUID] UUIDString]]];
         NSURL *tmpFilePathCopy = tempFilePath;
         [provider loadItemForTypeIdentifier:@"public.image"
@@ -71,7 +71,6 @@
                                   [defaults registerDefaults:@{
                                       @"AdvPngEnabled" : @(YES),
                                       @"AdvPngLevel" : @(4),
-                                      @"ZopfliEnabled" : @(YES),
                                       @"PngOutRemoveChunks" : @(YES),
                                       @"PreservePermissions" : @(NO),
                                       @"PreserveDates" : @(NO),

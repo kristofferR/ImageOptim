@@ -21,9 +21,8 @@ void IOSharedPrefsCopy(NSUserDefaults *__nonnull defs) {
     const NSArray *keys = @[
         @"AdvPngEnabled", @"AdvPngLevel", @"GifsicleEnabled",
         @"JpegOptimEnabled", @"JpegTranEnabled", @"JpegTranStripAll",
-        @"OptiPngEnabled",
-        @"PngCrush2Enabled", @"PngOutEnabled",
-        @"PngOutRemoveChunks", @"ZopfliEnabled",
+        @"OptiPngEnabled", @"PngOutEnabled",
+        @"PngOutRemoveChunks",
         @"PngMinQuality", @"JpegOptimMaxQuality", @"GifQuality",
     ];
 

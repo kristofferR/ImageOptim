@@ -10,18 +10,10 @@
 #import "Workers/PngquantWorker.h"
 #import "Workers/PngoutWorker.h"
 #import "Workers/OxiPngWorker.h"
-#import "Workers/PngCrushWorker.h"
-#import "Workers/ZopfliWorker.h"
 #import "Workers/JpegoptimWorker.h"
 #import "Workers/JpegtranWorker.h"
 #import "Workers/GifsicleWorker.h"
 #import "Workers/SvgoWorker.h"
-#import "Workers/SvgcleanerWorker.h"
-#import "Workers/GuetzliWorker.h"
-#import "Workers/PreProcessWorker.h"
-#import "Workers/PostProcessWorker.h"
-#import "Workers/PreProcessWorker.h"
-#import "Workers/PostProcessWorker.h"
 #import "Workers/PreProcessWorker.h"
 #import "Workers/PostProcessWorker.h"
 #import "ImageProcessor.h"
@@ -610,8 +602,6 @@
     NSMutableArray *runFirst = [NSMutableArray new];
     NSMutableArray *runLater = [NSMutableArray new];
     NSMutableArray *runLast = [NSMutableArray new];
-    NSMutableArray *runLast = [NSMutableArray new];
-    NSMutableArray *runLast = [NSMutableArray new];
 
     NSMutableArray *worker_list = [NSMutableArray new];
     NSInteger level = [defs integerForKey:@"AdvPngLevel"]; // AdvPNG setting is reused for all tools now
@@ -620,18 +610,6 @@
         dispatch_async(dispatch_get_main_queue(), ^() {
             [defs setBool:YES forKey:@"LossyUsed"];
         });
-    }
-    
-    // Add pre-processing worker if needed
-    if (self.resizeMode != 0 && (self.targetWidth > 0 || self.targetHeight > 0)) {
-        PreProcessWorker *preWorker = [[PreProcessWorker alloc] initWithJob:self];
-        [runFirst addObject:preWorker];
-    }
-    
-    // Add pre-processing worker if needed
-    if (self.resizeMode != 0 && (self.targetWidth > 0 || self.targetHeight > 0)) {
-        PreProcessWorker *preWorker = [[PreProcessWorker alloc] initWithJob:self];
-        [runFirst addObject:preWorker];
     }
     
     // Add pre-processing worker if needed
@@ -655,38 +633,18 @@
             }
         }
 
-        BOOL pngcrushEnabled = [defs boolForKey:@"PngCrush2Enabled"];
         BOOL oxipngEnabled = [defs boolForKey:@"OptiPngEnabled"];
         BOOL pngoutEnabled = [defs boolForKey:@"PngOutEnabled"];
-        BOOL zopfliEnabled = [defs boolForKey:@"ZopfliEnabled"];
         BOOL advpngEnabled = [defs boolForKey:@"AdvPngEnabled"];
         BOOL removePNGChunks = [defs boolForKey:@"PngOutRemoveChunks"];
 
-        if (level < 4 && zopfliEnabled) {
-            pngoutEnabled = NO;
-        }
-
-        if (level < 2 && oxipngEnabled) {
-            pngcrushEnabled = NO;
-        }
-
-        if (pngcrushEnabled) [worker_list addObject:[[PngCrushWorker alloc] initWithLevel:level defaults:defs file:self]];
         if (oxipngEnabled) [worker_list addObject:[[OxiPngWorker alloc] initWithLevel:level stripMetadata:removePNGChunks file:self]];
         if (pngoutEnabled) [worker_list addObject:[[PngoutWorker alloc] initWithLevel:level defaults:defs file:self]];
         if (advpngEnabled && removePNGChunks) {
             [worker_list addObject:[[AdvCompWorker alloc] initWithLevel:level file:self]];
         }
-        if (zopfliEnabled) {
-            ZopfliWorker *zw = [[ZopfliWorker alloc] initWithLevel:level defaults:defs file:self];
-            zw.alternativeStrategy = hasBeenRunBefore;
-            [worker_list addObject:zw];
-        }
         break;
     case FILETYPE_JPEG:
-        if (!lossyConverted && !hasBeenRunBefore && [defs boolForKey:@"GuetzliEnabled"] && [defs integerForKey:@"JpegOptimMaxQuality"] >= 80) {
-            [worker_list addObject:[[GuetzliWorker alloc] initWithDefaults:defs serialQueue:serialQueue file:self]];
-            lossyConverted = YES;
-        }
         if ([defs boolForKey:@"JpegOptimEnabled"]) [worker_list addObject:[[JpegoptimWorker alloc] initWithDefaults:defs file:self]];
         if ([defs boolForKey:@"JpegTranEnabled"]) [worker_list addObject:[[JpegtranWorker alloc] initWithDefaults:defs file:self]];
         break;
@@ -709,32 +667,17 @@
             if ([defs boolForKey:@"SvgoEnabled"]) {
                 [worker_list addObject:[[SvgoWorker alloc] initWithLossy:lossyEnabled job:self]];
             }
-            if ([defs boolForKey:@"SvgcleanerEnabled"]) {
-                [worker_list addObject:[[SvgcleanerWorker alloc] initWithLossy:lossyEnabled job:self]];
-            }
             break;
         default:
-    
-    // Add post-processing worker if needed
-    if (self.outputFormat != 0) { // Not ImageOutputFormatOriginal
-        PostProcessWorker *postWorker = [[PostProcessWorker alloc] initWithJob:self];
-        [runLast addObject:postWorker];
-    }
-    
-    // Add post-processing worker if needed
-    if (self.outputFormat != 0) { // Not ImageOutputFormatOriginal
-        PostProcessWorker *postWorker = [[PostProcessWorker alloc] initWithJob:self];
-        [runLast addObject:postWorker];
-    }
-    
-    // Add post-processing worker if needed
-    if (self.outputFormat != 0) { // Not ImageOutputFormatOriginal
-        PostProcessWorker *postWorker = [[PostProcessWorker alloc] initWithJob:self];
-        [runLast addObject:postWorker];
-    }
             [self setError:NSLocalizedString(@"File is neither PNG, GIF nor JPEG", @"tooltip")];
             [self cleanup];
             return;
+    }
+
+    // Add post-processing worker if needed
+    if (self.outputFormat != 0) { // Not ImageOutputFormatOriginal
+        PostProcessWorker *postWorker = [[PostProcessWorker alloc] initWithJob:self];
+        [runLast addObject:postWorker];
     }
 
     BOOL isQueueUnderUtilized = queue.operationCount < queue.maxConcurrentOperationCount;
@@ -757,12 +700,6 @@
 
     // Create a hash that includes all optimization settings to invalidate file caches on settings changes
     NSMutableArray *allWorkers = [NSMutableArray arrayWithArray:runFirst];
-    [allWorkers addObjectsFromArray:runLater];
-    [allWorkers addObjectsFromArray:runLast];
-    [self setSettingsHash:allWorkers];
-    [allWorkers addObjectsFromArray:runLater];
-    [allWorkers addObjectsFromArray:runLast];
-    [self setSettingsHash:allWorkers];
     [allWorkers addObjectsFromArray:runLater];
     [allWorkers addObjectsFromArray:runLast];
     [self setSettingsHash:allWorkers];
@@ -821,34 +758,10 @@
         [queue addOperation:w];
         previousWorker = w;
     }
-    
-    // Add post-processing workers that run after all optimization
-    for (Worker *w in runLast) {
-        if (previousWorker) {
-            [w addDependency:previousWorker];
-            previousWorker.nextOperation = w;
-        }
-        [saveOp addDependency:w];
-        [queue addOperation:w];
-        previousWorker = w;
-    }
-    
-    // Add post-processing workers that run after all optimization
-    for (Worker *w in runLast) {
-        if (previousWorker) {
-            [w addDependency:previousWorker];
-            previousWorker.nextOperation = w;
-        }
-        [saveOp addDependency:w];
-        [queue addOperation:w];
-        previousWorker = w;
-    }
 
     [self willChangeValueForKey:@"isBusy"];
     [workers addObjectsFromArray:runFirst];
     [workers addObjectsFromArray:runLater];
-    [workers addObjectsFromArray:runLast];
-    [workers addObjectsFromArray:runLast];
     [workers addObjectsFromArray:runLast];
     [self didChangeValueForKey:@"isBusy"];
 
