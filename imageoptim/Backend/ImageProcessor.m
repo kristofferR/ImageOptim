@@ -2,9 +2,6 @@
 //  ImageProcessor.m
 //  ImageOptim
 //
-//  Created by Enhanced ImageOptim on 2025.
-//
-//
 
 #import "ImageProcessor.h"
 #import "FormatConverters/FormatConverterFactory.h"

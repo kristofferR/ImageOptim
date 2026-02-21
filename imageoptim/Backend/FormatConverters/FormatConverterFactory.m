@@ -2,9 +2,6 @@
 //  FormatConverterFactory.m
 //  ImageOptim
 //
-//  Created by Enhanced ImageOptim on 2025.
-//
-//
 
 #import "FormatConverterFactory.h"
 #import "AVIFConverter.h"

@@ -36,6 +36,9 @@
     const unsigned char riffheader[] = {'R','I','F','F'};
     const unsigned char webpmagic[] = {'W','E','B','P'};
     const unsigned char ftypmagic[] = {'f','t','y','p'};
+    const unsigned char avifbrand[] = {'a','v','i','f'};
+    const unsigned char avisbrand[] = {'a','v','i','s'};
+    const unsigned char mif1brand[] = {'m','i','f','1'};
     unsigned char fileHeaderBytes[12];
 
     if (!fileData || fileData.length < sizeof(fileHeaderBytes)) {
@@ -58,7 +61,10 @@
         type = FILETYPE_JXL;
     } else if (0 == memcmp(fileHeaderBytes, riffheader, sizeof(riffheader)) && 0 == memcmp(fileHeaderBytes + 8, webpmagic, sizeof(webpmagic))) {
         type = FILETYPE_WEBP;
-    } else if (0 == memcmp(fileHeaderBytes + 4, ftypmagic, sizeof(ftypmagic))) {
+    } else if (0 == memcmp(fileHeaderBytes + 4, ftypmagic, sizeof(ftypmagic)) &&
+               (0 == memcmp(fileHeaderBytes + 8, avifbrand, sizeof(avifbrand)) ||
+                0 == memcmp(fileHeaderBytes + 8, avisbrand, sizeof(avisbrand)) ||
+                0 == memcmp(fileHeaderBytes + 8, mif1brand, sizeof(mif1brand)))) {
         type = FILETYPE_AVIF;
     }
 

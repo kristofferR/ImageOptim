@@ -2,9 +2,6 @@
 //  AVIFConverter.m
 //  ImageOptim
 //
-//  Created by Enhanced ImageOptim on 2025.
-//
-//
 
 #import "AVIFConverter.h"
 #import "../../log.h"

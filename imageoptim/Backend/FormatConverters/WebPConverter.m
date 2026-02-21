@@ -2,9 +2,6 @@
 //  WebPConverter.m
 //  ImageOptim
 //
-//  Created by Enhanced ImageOptim on 2025.
-//
-//
 
 #import "WebPConverter.h"
 #import "../../log.h"
@@ -61,53 +58,68 @@
         return nil;
     }
     
-    uint8_t *output = NULL;
-    size_t output_size = 0;
-    
     // Configure WebP encoding
     WebPConfig config;
     if (!WebPConfigInit(&config)) {
         IOWarn("Failed to initialize WebP config");
         return nil;
     }
-    
-    // Set quality (0-100 scale)
+
     config.quality = quality * 100;
-    config.method = 6; // Higher quality encoding method
-    
+    config.method = 6;
+
     if (!WebPValidateConfig(&config)) {
         IOWarn("Invalid WebP configuration");
         return nil;
     }
-    
-    // Encode based on whether image has alpha
-    if (rgbRep.hasAlpha) {
-        output_size = WebPEncodeRGBA((uint8_t *)rgbRep.bitmapData,
-                                   width, height,
-                                   rgbRep.bytesPerRow,
-                                   config.quality,
-                                   &output);
-    } else {
-        output_size = WebPEncodeRGB((uint8_t *)rgbRep.bitmapData,
-                                  width, height,
-                                  rgbRep.bytesPerRow,
-                                  config.quality,
-                                  &output);
+
+    // Set up picture
+    WebPPicture picture;
+    if (!WebPPictureInit(&picture)) {
+        IOWarn("Failed to initialize WebP picture");
+        return nil;
     }
-    
+
+    picture.width = (int)width;
+    picture.height = (int)height;
+    picture.use_argb = 1;
+
+    int importOk;
+    if (rgbRep.hasAlpha) {
+        importOk = WebPPictureImportRGBA(&picture,
+                                         (uint8_t *)rgbRep.bitmapData,
+                                         (int)rgbRep.bytesPerRow);
+    } else {
+        importOk = WebPPictureImportRGB(&picture,
+                                        (uint8_t *)rgbRep.bitmapData,
+                                        (int)rgbRep.bytesPerRow);
+    }
+
+    if (!importOk) {
+        IOWarn("Failed to import pixel data for WebP");
+        WebPPictureFree(&picture);
+        return nil;
+    }
+
+    // Set up memory writer
+    WebPMemoryWriter writer;
+    WebPMemoryWriterInit(&writer);
+    picture.writer = WebPMemoryWrite;
+    picture.custom_ptr = &writer;
+
+    int encodeOk = WebPEncode(&config, &picture);
+    WebPPictureFree(&picture);
+
     NSData *webpData = nil;
-    if (output && output_size > 0) {
-        webpData = [NSData dataWithBytes:output length:output_size];
-        IODebug("Successfully converted to WebP: %ld bytes", (long)output_size);
+    if (encodeOk && writer.size > 0) {
+        webpData = [NSData dataWithBytes:writer.mem length:writer.size];
+        IODebug("Successfully converted to WebP: %ld bytes", (long)writer.size);
     } else {
         IOWarn("Failed to encode WebP image");
     }
-    
-    // Cleanup
-    if (output) {
-        WebPFree(output);
-    }
-    
+
+    WebPMemoryWriterClear(&writer);
+
     return webpData;
 #else
     IOWarn("WebP support not compiled in");

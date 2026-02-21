@@ -2,9 +2,6 @@
 //  FormatConverterFactory.h
 //  ImageOptim
 //
-//  Created by Enhanced ImageOptim on 2025.
-//
-//
 
 #import <Foundation/Foundation.h>
 #import <AppKit/AppKit.h>

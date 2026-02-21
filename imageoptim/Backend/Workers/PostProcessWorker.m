@@ -2,9 +2,6 @@
 //  PostProcessWorker.m
 //  ImageOptim
 //
-//  Created by Enhanced ImageOptim on 2025.
-//
-//
 
 #import "PostProcessWorker.h"
 #import "../Job.h"

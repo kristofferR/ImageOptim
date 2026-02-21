@@ -1,6 +1,6 @@
 # ImageOptim
 
-ImageOptim is an enhanced image compression app based on [ImageOptim](https://imageoptim.com). It's a GUI for image optimization tools with added features for resizing and format conversion: PNGOUT, [OxiPNG](https://lib.rs/crates/oxipng), AdvPNG, [JPEGOptim](https://github.com/tjko/jpegoptim), Jpegtran, [Gifsicle](https://kornel.ski/lossygif), [SVGO](https://github.com/svg/svgo) and [MozJPEG](https://github.com/mozilla/mozjpeg).
+ImageOptim is an enhanced image compression app based on [ImageOptim](https://imageoptim.com). It's a GUI for image optimization tools with added features for resizing and format conversion: PNGOUT, [OxiPNG](https://lib.rs/crates/oxipng), AdvPNG, [JPEGOptim](https://github.com/tjko/jpegoptim), [Jpegli](https://github.com/libjxl/libjxl/tree/main/lib/jpegli), [Gifsicle](https://kornel.ski/lossygif), and [SVGO](https://github.com/svg/svgo).
 
 ## Enhanced Features
 
@@ -21,10 +21,8 @@ Requires:
 * [CocoaPods](https://cocoapods.org/) for WebP integration
 
 ```sh
-git clone --recursive https://github.com/yourusername/ImageOptim.git ImageOptim
+git clone --recursive <repo-url> ImageOptim
 cd ImageOptim
-chmod +x Scripts/setup-dependencies.sh
-./Scripts/setup-dependencies.sh
 ```
 
 To get started, open `imageoptim/ImageOptim.xcworkspace`. It will automatically download and build all subprojects when run in Xcode.
@@ -39,3 +37,4 @@ git submodule update --init
 cd gifsicle # or pngquant
 make clean
 make
+```

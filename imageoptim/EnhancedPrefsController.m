@@ -2,9 +2,6 @@
 //  EnhancedPrefsController.m
 //  ImageOptim
 //
-//  Created by Enhanced ImageOptim on 2025.
-//
-//
 
 #import "EnhancedPrefsController.h"
 #import "Backend/FormatConverters/FormatConverterFactory.h"

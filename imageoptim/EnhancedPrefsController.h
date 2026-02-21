@@ -2,9 +2,6 @@
 //  EnhancedPrefsController.h
 //  ImageOptim
 //
-//  Created by Enhanced ImageOptim on 2025.
-//
-//
 
 #import <Cocoa/Cocoa.h>
 #import "PrefsController.h"
