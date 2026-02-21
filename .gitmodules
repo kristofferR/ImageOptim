@@ -7,12 +7,12 @@
 [submodule "pngquant/src"]
 	path = pngquant/src
 	url = https://github.com/pornel/pngquant.git
-[submodule "libjpeg/src"]
-	path = libjpeg/src
-	url = https://github.com/google/jpegli.git
 [submodule "jpegoptim/src"]
 	path = jpegoptim/src
 	url = https://github.com/tjko/jpegoptim.git
 [submodule "oxipng/oxipng"]
 	path = oxipng/oxipng
 	url = https://github.com/shssoichiro/oxipng
+[submodule "libjpeg/src"]
+	path = libjpeg/src
+	url = https://github.com/ImageOptim/mozjpeg-cocoa.git

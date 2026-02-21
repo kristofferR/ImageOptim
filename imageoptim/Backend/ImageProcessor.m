@@ -74,24 +74,33 @@
         return imageData;
     }
     
-    NSImage *resizedImage = [[NSImage alloc] initWithSize:NSMakeSize(newWidth, newHeight)];
-    [resizedImage lockFocus];
-    
-    NSGraphicsContext *context = [NSGraphicsContext currentContext];
-    context.imageInterpolation = NSImageInterpolationHigh;
-    
-    [originalImage drawInRect:NSMakeRect(0, 0, newWidth, newHeight)
-                     fromRect:NSZeroRect
-                    operation:NSCompositingOperationCopy
-                     fraction:1.0];
-    
-    [resizedImage unlockFocus];
-    
-    NSBitmapImageRep *resizedRep = [[NSBitmapImageRep alloc] initWithFocusedViewRect:NSMakeRect(0, 0, newWidth, newHeight)];
+    NSBitmapImageRep *resizedRep = [[NSBitmapImageRep alloc]
+        initWithBitmapDataPlanes:NULL
+                      pixelsWide:newWidth
+                      pixelsHigh:newHeight
+                   bitsPerSample:8
+                 samplesPerPixel:4
+                        hasAlpha:YES
+                        isPlanar:NO
+                  colorSpaceName:NSCalibratedRGBColorSpace
+                     bytesPerRow:0
+                    bitsPerPixel:0];
     if (!resizedRep) {
         IOWarn("Failed to create resized image representation");
         return imageData;
     }
+    resizedRep.size = NSMakeSize(newWidth, newHeight);
+
+    [NSGraphicsContext saveGraphicsState];
+    [NSGraphicsContext setCurrentContext:[NSGraphicsContext graphicsContextWithBitmapImageRep:resizedRep]];
+    NSGraphicsContext.currentContext.imageInterpolation = NSImageInterpolationHigh;
+
+    [originalImage drawInRect:NSMakeRect(0, 0, newWidth, newHeight)
+                     fromRect:NSZeroRect
+                    operation:NSCompositingOperationCopy
+                     fraction:1.0];
+
+    [NSGraphicsContext restoreGraphicsState];
     
     // Return PNG data for further processing
     NSData *resizedData = [resizedRep representationUsingType:NSBitmapImageFileTypePNG properties:@{}];
