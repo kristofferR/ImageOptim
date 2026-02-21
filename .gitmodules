@@ -15,4 +15,4 @@
 	url = https://github.com/shssoichiro/oxipng
 [submodule "libjpeg/src"]
 	path = libjpeg/src
-	url = https://github.com/ImageOptim/mozjpeg-cocoa.git
+	url = https://github.com/libjxl/libjxl.git

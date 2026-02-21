@@ -12,7 +12,7 @@
 @implementation EnhancedPrefsController
 
 - (instancetype)init {
-    if ((self = [super init])) {
+    if ((self = [super initWithWindowNibName:@"EnhancedPrefsController"])) {
         // Additional initialization if needed
     }
     return self;

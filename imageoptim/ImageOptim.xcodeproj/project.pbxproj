@@ -101,6 +101,7 @@
 		DD000006000000000000B006 /* JXLConverter.m in Sources */ = {isa = PBXBuildFile; fileRef = DD000006000000000000A006 /* JXLConverter.m */; };
 		DD000007000000000000B007 /* WebPConverter.m in Sources */ = {isa = PBXBuildFile; fileRef = DD000007000000000000A007 /* WebPConverter.m */; };
 		DD000008000000000000B008 /* EnhancedPrefsController.m in Sources */ = {isa = PBXBuildFile; fileRef = DD000008000000000000A008 /* EnhancedPrefsController.m */; };
+		DD000009000000000000B009 /* EnhancedPrefsController.xib in Resources */ = {isa = PBXBuildFile; fileRef = DD000009000000000000A009 /* EnhancedPrefsController.xib */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -684,6 +685,7 @@
 		DD000007000000000000A017 /* WebPConverter.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = WebPConverter.h; sourceTree = "<group>"; };
 		DD000008000000000000A008 /* EnhancedPrefsController.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = EnhancedPrefsController.m; sourceTree = "<group>"; };
 		DD000008000000000000A018 /* EnhancedPrefsController.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = EnhancedPrefsController.h; sourceTree = "<group>"; };
+		DD000009000000000000A009 /* EnhancedPrefsController.xib */ = {isa = PBXFileReference; lastKnownFileType = file.xib; name = EnhancedPrefsController.xib; path = Base.lproj/EnhancedPrefsController.xib; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -958,6 +960,7 @@
 				5A6242070CA86DC7005942A3 /* PrefsController.m */,
 				DD000008000000000000A018 /* EnhancedPrefsController.h */,
 				DD000008000000000000A008 /* EnhancedPrefsController.m */,
+				DD000009000000000000A009 /* EnhancedPrefsController.xib */,
 				5A391882140A9B19001B4FD7 /* RevealButtonCell.h */,
 				5A391880140A9B10001B4FD7 /* RevealButtonCell.m */,
 				5AACA82F0CAFE74E004D45CA /* Transformers.h */,
@@ -1517,6 +1520,7 @@
 				5A7D24E913E5BC3100815AAA /* ok.png in Resources */,
 				5A0A24F117492D39003264CC /* ok@2x.png in Resources */,
 				5A7D24E213E5BC3100815AAA /* PrefsController.xib in Resources */,
+				DD000009000000000000B009 /* EnhancedPrefsController.xib in Resources */,
 				5A7D24EA13E5BC3100815AAA /* progress.png in Resources */,
 				5A0A24F817494254003264CC /* progress@2x.png in Resources */,
 				5A1D3E8C14366933004EE809 /* style.css in Resources */,
