@@ -3,6 +3,60 @@
 #import "../TempFile.h"
 #import "../../log.h"
 
+static BOOL HasMultipleDecodedFrames(NSString *pngPath) {
+    NSFileManager *fm = [NSFileManager defaultManager];
+    NSString *dirPath = [pngPath stringByDeletingLastPathComponent];
+    NSString *baseName = [[pngPath lastPathComponent] stringByDeletingPathExtension];
+    NSString *extension = [pngPath pathExtension];
+    NSString *framePrefix = [baseName stringByAppendingString:@"-"];
+    NSString *frameSuffix = [@"." stringByAppendingString:extension];
+
+    NSInteger frameCount = [fm fileExistsAtPath:pngPath] ? 1 : 0;
+    NSArray<NSString *> *entries = [fm contentsOfDirectoryAtPath:dirPath error:nil];
+    for (NSString *entry in entries) {
+        if ([entry hasPrefix:framePrefix] && [entry hasSuffix:frameSuffix]) {
+            frameCount++;
+            if (frameCount > 1) {
+                return YES;
+            }
+        }
+    }
+    return NO;
+}
+
+static NSString *DecodedFramePath(NSString *pngPath) {
+    NSFileManager *fm = [NSFileManager defaultManager];
+    if ([fm fileExistsAtPath:pngPath]) {
+        return pngPath;
+    }
+
+    NSString *frame0Path = [NSString stringWithFormat:@"%@-0.%@",
+                                                      [pngPath stringByDeletingPathExtension],
+                                                      [pngPath pathExtension]];
+    if ([fm fileExistsAtPath:frame0Path]) {
+        return frame0Path;
+    }
+
+    return nil;
+}
+
+static void CleanupDecodedFrames(NSString *pngPath) {
+    NSFileManager *fm = [NSFileManager defaultManager];
+    NSString *dirPath = [pngPath stringByDeletingLastPathComponent];
+    NSString *baseName = [[pngPath lastPathComponent] stringByDeletingPathExtension];
+    NSString *extension = [pngPath pathExtension];
+    NSString *framePrefix = [baseName stringByAppendingString:@"-"];
+    NSString *frameSuffix = [@"." stringByAppendingString:extension];
+
+    [fm removeItemAtPath:pngPath error:nil];
+    NSArray<NSString *> *entries = [fm contentsOfDirectoryAtPath:dirPath error:nil];
+    for (NSString *entry in entries) {
+        if ([entry hasPrefix:framePrefix] && [entry hasSuffix:frameSuffix]) {
+            [fm removeItemAtPath:[dirPath stringByAppendingPathComponent:entry] error:nil];
+        }
+    }
+}
+
 @implementation JXLWorker
 
 - (NSInteger)settingsIdentifier {
@@ -38,10 +92,11 @@
 
     // Decode JXL to temp PNG
     NSURL *pngTemp = [[temp URLByDeletingPathExtension] URLByAppendingPathExtension:@"png"];
+    NSString *pngPath = pngTemp.path;
 
     NSTask *decodeTask = [NSTask new];
     [decodeTask setLaunchPath:djxlPath];
-    [decodeTask setArguments:@[file.path.path, pngTemp.path]];
+    [decodeTask setArguments:@[file.path.path, pngPath, @"--output_frames"]];
     @try {
         [decodeTask launch];
         [decodeTask waitUntilExit];
@@ -51,7 +106,18 @@
     }
 
     if ([decodeTask terminationStatus] != 0) {
-        [[NSFileManager defaultManager] removeItemAtURL:pngTemp error:nil];
+        CleanupDecodedFrames(pngPath);
+        return NO;
+    }
+
+    if (HasMultipleDecodedFrames(pngPath)) {
+        CleanupDecodedFrames(pngPath);
+        return NO; // Animated JXL expands to multiple frame files with --output_frames
+    }
+
+    NSString *decodedFramePath = DecodedFramePath(pngPath);
+    if (!decodedFramePath) {
+        CleanupDecodedFrames(pngPath);
         return NO;
     }
 
@@ -62,13 +128,13 @@
     } else {
         [args addObjectsFromArray:@[@"-q", @"100"]];
     }
-    [args addObjectsFromArray:@[@"-e", @"9", pngTemp.path, temp.path]];
+    [args addObjectsFromArray:@[@"-e", @"9", decodedFramePath, temp.path]];
 
     [self taskWithPath:cjxlPath arguments:args];
     [self launchTask];
     BOOL success = [self waitUntilTaskExit];
 
-    [[NSFileManager defaultManager] removeItemAtURL:pngTemp error:nil];
+    CleanupDecodedFrames(pngPath);
 
     if (!success) {
         return NO;

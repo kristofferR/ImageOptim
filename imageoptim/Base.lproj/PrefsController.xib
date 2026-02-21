@@ -286,12 +286,51 @@
                                                             <binding destination="300" name="value" keyPath="values.SvgoEnabled" id="S8A-r5-4NB"/>
                                                         </connections>
                                                     </button>
+                                                    <button horizontalCompressionResistancePriority="1000" verticalCompressionResistancePriority="1000" translatesAutoresizingMaskIntoConstraints="NO" id="avif-chk-btn">
+                                                        <rect key="frame" x="18" y="32" width="59" height="18"/>
+                                                        <constraints>
+                                                            <constraint firstAttribute="height" constant="14" id="avif-chk-h"/>
+                                                        </constraints>
+                                                        <buttonCell key="cell" type="check" title="AVIF" bezelStyle="regularSquare" imagePosition="left" alignment="left" lineBreakMode="truncatingTail" state="on" inset="2" id="avif-chk-cell">
+                                                            <behavior key="behavior" changeContents="YES" doesNotDimImage="YES" lightByContents="YES"/>
+                                                            <font key="font" metaFont="system"/>
+                                                        </buttonCell>
+                                                        <connections>
+                                                            <binding destination="300" name="value" keyPath="values.AvifEnabled" id="avif-chk-bind"/>
+                                                        </connections>
+                                                    </button>
+                                                    <button horizontalCompressionResistancePriority="1000" verticalCompressionResistancePriority="1000" translatesAutoresizingMaskIntoConstraints="NO" id="webp-chk-btn">
+                                                        <rect key="frame" x="18" y="12" width="59" height="18"/>
+                                                        <constraints>
+                                                            <constraint firstAttribute="height" constant="14" id="webp-chk-h"/>
+                                                        </constraints>
+                                                        <buttonCell key="cell" type="check" title="WebP" bezelStyle="regularSquare" imagePosition="left" alignment="left" lineBreakMode="truncatingTail" state="on" inset="2" id="webp-chk-cell">
+                                                            <behavior key="behavior" changeContents="YES" doesNotDimImage="YES" lightByContents="YES"/>
+                                                            <font key="font" metaFont="system"/>
+                                                        </buttonCell>
+                                                        <connections>
+                                                            <binding destination="300" name="value" keyPath="values.WebpEnabled" id="webp-chk-bind"/>
+                                                        </connections>
+                                                    </button>
+                                                    <button horizontalCompressionResistancePriority="1000" verticalCompressionResistancePriority="1000" translatesAutoresizingMaskIntoConstraints="NO" id="jxl-chk-btn">
+                                                        <rect key="frame" x="18" y="-8" width="75" height="18"/>
+                                                        <constraints>
+                                                            <constraint firstAttribute="height" constant="14" id="jxl-chk-h"/>
+                                                        </constraints>
+                                                        <buttonCell key="cell" type="check" title="JPEG XL" bezelStyle="regularSquare" imagePosition="left" alignment="left" lineBreakMode="truncatingTail" state="on" inset="2" id="jxl-chk-cell">
+                                                            <behavior key="behavior" changeContents="YES" doesNotDimImage="YES" lightByContents="YES"/>
+                                                            <font key="font" metaFont="system"/>
+                                                        </buttonCell>
+                                                        <connections>
+                                                            <binding destination="300" name="value" keyPath="values.JxlEnabled" id="jxl-chk-bind"/>
+                                                        </connections>
+                                                    </button>
                                                 </subviews>
                                                 <constraints>
                                                     <constraint firstAttribute="trailing" relation="greaterThanOrEqual" secondItem="1088" secondAttribute="trailing" constant="12" id="72p-CO-cJu"/>
                                                     <constraint firstItem="78U-a4-xCR" firstAttribute="leading" secondItem="1085" secondAttribute="leading" id="Cek-TY-eWL"/>
                                                     <constraint firstItem="1085" firstAttribute="top" secondItem="1091" secondAttribute="bottom" constant="6" id="IeS-FY-P6Q"/>
-                                                    <constraint firstAttribute="bottom" relation="greaterThanOrEqual" secondItem="78U-a4-xCR" secondAttribute="bottom" constant="16" id="J1E-1G-KnI"/>
+                                                    <constraint firstAttribute="bottom" relation="greaterThanOrEqual" secondItem="jxl-chk-btn" secondAttribute="bottom" constant="16" id="J1E-1G-KnI"/>
                                                     <constraint firstItem="1089" firstAttribute="leading" secondItem="55p-R0-QvS" secondAttribute="leading" constant="20" id="Ji6-IV-G9i"/>
                                                     <constraint firstAttribute="trailing" relation="greaterThanOrEqual" secondItem="1085" secondAttribute="trailing" constant="12" id="MGe-at-Icd"/>
                                                     <constraint firstItem="1091" firstAttribute="top" secondItem="1090" secondAttribute="bottom" constant="6" id="NGN-NP-WGG"/>
@@ -310,6 +349,15 @@
                                                     <constraint firstItem="1085" firstAttribute="leading" secondItem="55p-R0-QvS" secondAttribute="leading" constant="20" id="lGN-Th-fHT"/>
                                                     <constraint firstItem="78U-a4-xCR" firstAttribute="top" secondItem="1085" secondAttribute="bottom" constant="6" id="uXp-aW-vYC"/>
                                                     <constraint firstItem="1090" firstAttribute="top" secondItem="1089" secondAttribute="bottom" constant="6" id="x8Z-h9-t8K"/>
+                                                    <constraint firstItem="avif-chk-btn" firstAttribute="top" secondItem="78U-a4-xCR" secondAttribute="bottom" constant="6" id="avif-top-c"/>
+                                                    <constraint firstItem="avif-chk-btn" firstAttribute="leading" secondItem="55p-R0-QvS" secondAttribute="leading" constant="20" id="avif-lead-c"/>
+                                                    <constraint firstAttribute="trailing" relation="greaterThanOrEqual" secondItem="avif-chk-btn" secondAttribute="trailing" constant="12" id="avif-trail-c"/>
+                                                    <constraint firstItem="webp-chk-btn" firstAttribute="top" secondItem="avif-chk-btn" secondAttribute="bottom" constant="6" id="webp-top-c"/>
+                                                    <constraint firstItem="webp-chk-btn" firstAttribute="leading" secondItem="55p-R0-QvS" secondAttribute="leading" constant="20" id="webp-lead-c"/>
+                                                    <constraint firstAttribute="trailing" relation="greaterThanOrEqual" secondItem="webp-chk-btn" secondAttribute="trailing" constant="12" id="webp-trail-c"/>
+                                                    <constraint firstItem="jxl-chk-btn" firstAttribute="top" secondItem="webp-chk-btn" secondAttribute="bottom" constant="6" id="jxl-top-c"/>
+                                                    <constraint firstItem="jxl-chk-btn" firstAttribute="leading" secondItem="55p-R0-QvS" secondAttribute="leading" constant="20" id="jxl-lead-c"/>
+                                                    <constraint firstAttribute="trailing" relation="greaterThanOrEqual" secondItem="jxl-chk-btn" secondAttribute="trailing" constant="12" id="jxl-trail-c"/>
                                                 </constraints>
                                             </view>
                                             <constraints>

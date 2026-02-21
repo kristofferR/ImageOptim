@@ -278,7 +278,7 @@ static NSString *kIMDraggedRowIndexesPboardType = @"com.imageoptim.rows";
         IOWarn("bad paths obj %@", paths);
         return NO;
     }
-    
+
     NSMutableArray<JobProxy *> *toAdd = [NSMutableArray arrayWithCapacity:[paths count]];
 
     BOOL allOK = YES;

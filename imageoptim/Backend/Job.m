@@ -541,7 +541,7 @@
         [self setError:NSLocalizedString(@"Can't open the file", @"tooltip, generic loading error")];
         return;
     }
-    
+
     BOOL hasChangedSinceLastSave = self.savedOutput && self.savedOutput.byteSize != input.byteSize;
     BOOL hasBeenRunBefore = self.initialInput && !hasChangedSinceLastSave;
 
@@ -570,7 +570,7 @@
             [defs setBool:YES forKey:@"LossyUsed"];
         });
     }
-    
+
     switch (input->fileType) {
     case FILETYPE_PNG:
         if (hasBeenRunBefore) {
@@ -702,7 +702,7 @@
         [queue addOperation:w];
         previousWorker = w;
     }
-    
+
     [self willChangeValueForKey:@"isBusy"];
     [workers addObjectsFromArray:runFirst];
     [workers addObjectsFromArray:runLater];
