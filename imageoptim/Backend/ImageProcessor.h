@@ -14,7 +14,8 @@ typedef NS_ENUM(NSInteger, ImageOutputFormat) {
     ImageOutputFormatJPEG,
     ImageOutputFormatPNG,
     ImageOutputFormatAVIF,
-    ImageOutputFormatWebP
+    ImageOutputFormatWebP,
+    ImageOutputFormatJXL
 };
 
 typedef NS_ENUM(NSInteger, ImageResizeMode) {

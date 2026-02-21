@@ -117,6 +117,8 @@
             return @"avif";
         case ImageOutputFormatWebP:
             return @"webp";
+        case ImageOutputFormatJXL:
+            return @"jxl";
         default:
             return @"";
     }
@@ -132,6 +134,8 @@
             return @"image/avif";
         case ImageOutputFormatWebP:
             return @"image/webp";
+        case ImageOutputFormatJXL:
+            return @"image/jxl";
         default:
             return @"application/octet-stream";
     }

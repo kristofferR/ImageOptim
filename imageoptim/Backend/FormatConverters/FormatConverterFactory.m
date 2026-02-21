@@ -9,6 +9,7 @@
 #import "FormatConverterFactory.h"
 #import "AVIFConverter.h"
 #import "WebPConverter.h"
+#import "JXLConverter.h"
 #import "../../log.h"
 
 @implementation FormatConverterFactory
@@ -40,7 +41,10 @@
             
         case ImageOutputFormatWebP:
             return [WebPConverter convertImageData:imageData quality:quality];
-            
+
+        case ImageOutputFormatJXL:
+            return [JXLConverter convertImageData:imageData quality:quality];
+
         default:
             IOWarn("Unsupported output format: %ld", (long)format);
             return nil;
@@ -71,7 +75,10 @@
             
         case ImageOutputFormatWebP:
             return [WebPConverter convertBitmapImageRep:imageRep quality:quality];
-            
+
+        case ImageOutputFormatJXL:
+            return [JXLConverter convertBitmapImageRep:imageRep quality:quality];
+
         default:
             IOWarn("Unsupported output format: %ld", (long)format);
             return nil;
@@ -90,7 +97,10 @@
             
         case ImageOutputFormatWebP:
             return [WebPConverter isWebPSupported];
-            
+
+        case ImageOutputFormatJXL:
+            return [JXLConverter isJXLSupported];
+
         default:
             return NO;
     }
@@ -98,8 +108,8 @@
 
 + (NSArray<NSNumber *> *)supportedFormats {
     NSMutableArray *formats = [NSMutableArray array];
-    
-    for (NSInteger format = ImageOutputFormatOriginal; format <= ImageOutputFormatWebP; format++) {
+
+    for (NSInteger format = ImageOutputFormatOriginal; format <= ImageOutputFormatJXL; format++) {
         if ([self isFormatSupported:(ImageOutputFormat)format]) {
             [formats addObject:@(format)];
         }

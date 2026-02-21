@@ -31,7 +31,7 @@
     // Setup output format popup
     [self.outputFormatPopup removeAllItems];
     
-    NSArray *formatTitles = @[@"Keep Original", @"JPEG", @"PNG", @"AVIF", @"WebP"];
+    NSArray *formatTitles = @[@"Keep Original", @"JPEG", @"PNG", @"AVIF", @"WebP", @"JPEG XL"];
     NSArray<NSNumber *> *supportedFormats = [FormatConverterFactory supportedFormats];
     
     for (NSInteger i = 0; i < formatTitles.count; i++) {
@@ -42,6 +42,9 @@
                 title = [title stringByAppendingString:@" (Not Available)"];
             }
             if (i == ImageOutputFormatWebP && ![FormatConverterFactory isFormatSupported:ImageOutputFormatWebP]) {
+                title = [title stringByAppendingString:@" (Not Available)"];
+            }
+            if (i == ImageOutputFormatJXL && ![FormatConverterFactory isFormatSupported:ImageOutputFormatJXL]) {
                 title = [title stringByAppendingString:@" (Not Available)"];
             }
             [self.outputFormatPopup addItemWithTitle:title];
