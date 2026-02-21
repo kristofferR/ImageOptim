@@ -622,13 +622,13 @@
             }
             break;
         case FILETYPE_AVIF:
-            [worker_list addObject:[[AVIFWorker alloc] initWithDefaults:defs file:self]];
+            if ([defs boolForKey:@"AvifEnabled"]) [worker_list addObject:[[AVIFWorker alloc] initWithDefaults:defs file:self]];
             break;
         case FILETYPE_WEBP:
-            [worker_list addObject:[[WebPWorker alloc] initWithDefaults:defs file:self]];
+            if ([defs boolForKey:@"WebpEnabled"]) [worker_list addObject:[[WebPWorker alloc] initWithDefaults:defs file:self]];
             break;
         case FILETYPE_JXL:
-            [worker_list addObject:[[JXLWorker alloc] initWithDefaults:defs file:self]];
+            if ([defs boolForKey:@"JxlEnabled"]) [worker_list addObject:[[JXLWorker alloc] initWithDefaults:defs file:self]];
             break;
         default:
             [self setError:NSLocalizedString(@"Unsupported file format", @"tooltip")];

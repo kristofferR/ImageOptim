@@ -35,9 +35,6 @@ static const char *kIMPreviewPanelContext = "preview";
     // Use lighter defaults on slower machines
     if (maxTasks <= 4) {
         defs[@"PngOutEnabled"] = @(NO);
-        if (maxTasks <= 2) {
-            defs[@"PngCrush2Enabled"] = @(NO);
-        }
     }
 
     NSUserDefaults *userDefaults = [NSUserDefaults standardUserDefaults];

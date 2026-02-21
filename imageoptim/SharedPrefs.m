@@ -24,6 +24,8 @@ void IOSharedPrefsCopy(NSUserDefaults *__nonnull defs) {
         @"OptiPngEnabled", @"PngOutEnabled",
         @"PngOutRemoveChunks",
         @"PngMinQuality", @"JpegOptimMaxQuality", @"GifQuality",
+        @"AvifQuality", @"WebpQuality", @"JxlQuality",
+        @"AvifEnabled", @"WebpEnabled", @"JxlEnabled",
     ];
 
     NSUserDefaults *shared = IOSharedPrefs();

@@ -23,6 +23,10 @@
 }
 
 - (BOOL)optimizeFile:(File *)file toTempPath:(NSURL *)temp {
+    if (file->isAnimated) {
+        return NO; // Animated WebP cannot be safely re-encoded via PNG
+    }
+
     NSString *dwebpPath = [self pathForExecutableName:@"dwebp"];
     NSString *cwebpPath = [self pathForExecutableName:@"cwebp"];
 

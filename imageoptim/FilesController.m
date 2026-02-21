@@ -461,6 +461,9 @@ static NSString *kIMDraggedRowIndexesPboardType = @"com.imageoptim.rows";
 #define JPEG_ENABLED 2
 #define GIF_ENABLED 4
 #define SVG_ENABLED 8
+#define AVIF_ENABLED 16
+#define WEBP_ENABLED 32
+#define JXL_ENABLED 64
 
 - (int)typesEnabled {
     int types = 0;
@@ -481,6 +484,18 @@ static NSString *kIMDraggedRowIndexesPboardType = @"com.imageoptim.rows";
 
     if ([defs boolForKey:@"SvgoEnabled"]) {
         types |= SVG_ENABLED;
+    }
+
+    if ([defs boolForKey:@"AvifEnabled"]) {
+        types |= AVIF_ENABLED;
+    }
+
+    if ([defs boolForKey:@"WebpEnabled"]) {
+        types |= WEBP_ENABLED;
+    }
+
+    if ([defs boolForKey:@"JxlEnabled"]) {
+        types |= JXL_ENABLED;
     }
 
     if (!types) types = PNG_ENABLED; // will show error in the list
@@ -505,8 +520,15 @@ static NSString *kIMDraggedRowIndexesPboardType = @"com.imageoptim.rows";
     if (types & SVG_ENABLED) {
         [extensions addObject:@"svg"];
     }
-
-    [extensions addObjectsFromArray:@[ @"avif", @"AVIF", @"webp", @"WEBP", @"jxl", @"JXL" ]];
+    if (types & AVIF_ENABLED) {
+        [extensions addObjectsFromArray:@[ @"avif", @"AVIF" ]];
+    }
+    if (types & WEBP_ENABLED) {
+        [extensions addObjectsFromArray:@[ @"webp", @"WEBP" ]];
+    }
+    if (types & JXL_ENABLED) {
+        [extensions addObjectsFromArray:@[ @"jxl", @"JXL" ]];
+    }
 
     return extensions;
 }
@@ -526,9 +548,17 @@ static NSString *kIMDraggedRowIndexesPboardType = @"com.imageoptim.rows";
         [fileTypes addObjectsFromArray:@[ @"gif", @"GIF", NSFileTypeForHFSTypeCode('GIFf'), @"public.gif", @"image/gif" ]];
     }
     if (types & SVG_ENABLED) {
-        [fileTypes addObjectsFromArray:@[ @"svg", @"public.svg-image", @"image/svg" ]];
+        [fileTypes addObjectsFromArray:@[ @"svg", @"public.svg-image", @"image/svg+xml" ]];
     }
-    [fileTypes addObjectsFromArray:@[ @"avif", @"AVIF", @"image/avif", @"webp", @"WEBP", @"image/webp", @"jxl", @"JXL", @"image/jxl" ]];
+    if (types & AVIF_ENABLED) {
+        [fileTypes addObjectsFromArray:@[ @"avif", @"AVIF", @"image/avif" ]];
+    }
+    if (types & WEBP_ENABLED) {
+        [fileTypes addObjectsFromArray:@[ @"webp", @"WEBP", @"image/webp" ]];
+    }
+    if (types & JXL_ENABLED) {
+        [fileTypes addObjectsFromArray:@[ @"jxl", @"JXL", @"image/jxl" ]];
+    }
     return fileTypes;
 }
 

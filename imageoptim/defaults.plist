@@ -40,6 +40,12 @@
 	<true/>
 	<key>BounceDock</key>
 	<true/>
+	<key>AvifEnabled</key>
+	<true/>
+	<key>WebpEnabled</key>
+	<true/>
+	<key>JxlEnabled</key>
+	<true/>
 	<key>JxlQuality</key>
 	<integer>85</integer>
 	<key>AvifQuality</key>

@@ -24,6 +24,7 @@ NS_ASSUME_NONNULL_BEGIN
 @interface File : NSObject {
 @public
     enum IOFileType fileType;
+    BOOL isAnimated;
 }
 
 - (nullable instancetype)initWithData:(NSData *)fileData fromPath:(NSURL *)path;

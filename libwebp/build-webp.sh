@@ -22,7 +22,7 @@ LIBJPEG_SRC="$REPO_ROOT/libjpeg/src/third_party/libjpeg-turbo"
 MACOSX_DEPLOYMENT_TARGET="${MACOSX_DEPLOYMENT_TARGET:-10.13}"
 export MACOSX_DEPLOYMENT_TARGET
 
-ARCHS=(arm64)
+ARCHS=(arm64 x86_64)
 
 mkdir -p "$OUTPUT_DIR"
 

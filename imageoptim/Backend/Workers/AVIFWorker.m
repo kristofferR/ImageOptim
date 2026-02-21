@@ -23,6 +23,10 @@
 }
 
 - (BOOL)optimizeFile:(File *)file toTempPath:(NSURL *)temp {
+    if (file->isAnimated) {
+        return NO; // Animated AVIF cannot be safely re-encoded via PNG
+    }
+
     NSString *avifdecPath = [self pathForExecutableName:@"avifdec"];
     NSString *avifencPath = [self pathForExecutableName:@"avifenc"];
 

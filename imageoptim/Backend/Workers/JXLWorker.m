@@ -23,6 +23,10 @@
 }
 
 - (BOOL)optimizeFile:(File *)file toTempPath:(NSURL *)temp {
+    if (file->isAnimated) {
+        return NO; // Animated JXL cannot be safely re-encoded via PNG
+    }
+
     NSString *djxlPath = [self pathForExecutableName:@"djxl"];
     NSString *cjxlPath = [self pathForExecutableName:@"cjxl"];
 

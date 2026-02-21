@@ -101,7 +101,6 @@
 		5FD569DD21A059A000BC9F82 /* JobProxy.m in Sources */ = {isa = PBXBuildFile; fileRef = 5FD569DC21A059A000BC9F82 /* JobProxy.m */; };
 		5FFC96C1275842310035D0A2 /* oxipng in CopyFiles */ = {isa = PBXBuildFile; fileRef = 5F75B47527583B9B0072F27A /* oxipng */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
 		8D11072D0486CEB800E47090 /* main.m in Sources */ = {isa = PBXBuildFile; fileRef = 29B97316FDCFA39411CA2CEA /* main.m */; settings = {ATTRIBUTES = (); }; };
-		A52E48725A2903DB8006D01F /* Pods_ImageOptim.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 40C12C0D6E1ABC1BDAA9917E /* Pods_ImageOptim.framework */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -448,8 +447,6 @@
 		1B5210E616BFA7CA0044C869 /* zh-Hant */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = "zh-Hant"; path = "zh-Hant.lproj/ImageOptim.strings"; sourceTree = "<group>"; };
 		1B5210E716BFA7CA0044C869 /* zh-Hant */ = {isa = PBXFileReference; lastKnownFileType = file.plist.strings; name = "zh-Hant"; path = "zh-Hant.lproj/PrefsController.strings"; sourceTree = "<group>"; };
 		29B97316FDCFA39411CA2CEA /* main.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = main.m; sourceTree = "<group>"; };
-		2A1DF0F6FFD873B77B9BEC8D /* Pods-ImageOptim.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-ImageOptim.debug.xcconfig"; path = "Target Support Files/Pods-ImageOptim/Pods-ImageOptim.debug.xcconfig"; sourceTree = "<group>"; };
-		40C12C0D6E1ABC1BDAA9917E /* Pods_ImageOptim.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_ImageOptim.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		5A012EBD17A89234002E794E /* cs */ = {isa = PBXFileReference; lastKnownFileType = text.html; name = cs; path = cs.lproj/Credits.html; sourceTree = "<group>"; };
 		5A012ECC17A89238002E794E /* tr */ = {isa = PBXFileReference; lastKnownFileType = text.html; name = tr; path = tr.lproj/Credits.html; sourceTree = "<group>"; };
 		5A012ECD17A89239002E794E /* vi */ = {isa = PBXFileReference; lastKnownFileType = text.html; name = vi; path = vi.lproj/Credits.html; sourceTree = "<group>"; };
@@ -682,7 +679,6 @@
 		5FD569DC21A059A000BC9F82 /* JobProxy.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = JobProxy.m; sourceTree = "<group>"; };
 		8D1107310486CEB800E47090 /* Info.plist */ = {isa = PBXFileReference; explicitFileType = text.plist.xml; fileEncoding = 4; path = Info.plist; sourceTree = "<group>"; };
 		8D1107320486CEB800E47090 /* ImageOptim.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ImageOptim.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		A97E39EBB4DE4AEAD7A115E1 /* Pods-ImageOptim.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-ImageOptim.release.xcconfig"; path = "Target Support Files/Pods-ImageOptim/Pods-ImageOptim.release.xcconfig"; sourceTree = "<group>"; };
 		F8C4ABCD1755C91B004FC041 /* ko */ = {isa = PBXFileReference; lastKnownFileType = folder; name = ko; path = ko.lproj/Help; sourceTree = "<group>"; };
 		F8C4ABCF1755C91B004FC041 /* ko */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = ko; path = ko.lproj/Localizable.strings; sourceTree = "<group>"; };
 		F8C4ABD01755C91B004FC041 /* ko */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = ko; path = ko.lproj/ImageOptim.strings; sourceTree = "<group>"; };
@@ -725,7 +721,6 @@
 				5ABE15591AE5072300861C6B /* ImageOptimGPL.framework in Frameworks */,
 				5A99FE84140AE80600BB2F79 /* Quartz.framework in Frameworks */,
 				5A5811AB1AD73A990001838D /* Sparkle.framework in Frameworks */,
-				A52E48725A2903DB8006D01F /* Pods_ImageOptim.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -783,7 +778,6 @@
 				5AC64EFF1AF3FDEE0032AA7F /* Extension */,
 				29B97323FDCFA39411CA2CEA /* Frameworks */,
 				19C28FACFE9D520D11CA2CBB /* Products */,
-				D928AED0F56F7DD8E80C8E56 /* Pods */,
 			);
 			name = ImageOptim;
 			sourceTree = "<group>";
@@ -848,7 +842,6 @@
 				5AEF1B2110F2BCB200E3E4F0 /* Foundation.framework */,
 				5A08FDAF1933D635001DA24B /* libsqlite3.dylib */,
 				5A99FE83140AE80600BB2F79 /* Quartz.framework */,
-				40C12C0D6E1ABC1BDAA9917E /* Pods_ImageOptim.framework */,
 			);
 			name = Frameworks;
 			sourceTree = "<group>";
@@ -1066,16 +1059,6 @@
 			name = Sparkle;
 			sourceTree = "<group>";
 		};
-		D928AED0F56F7DD8E80C8E56 /* Pods */ = {
-			isa = PBXGroup;
-			children = (
-				2A1DF0F6FFD873B77B9BEC8D /* Pods-ImageOptim.debug.xcconfig */,
-				A97E39EBB4DE4AEAD7A115E1 /* Pods-ImageOptim.release.xcconfig */,
-			);
-			name = Pods;
-			path = Pods;
-			sourceTree = "<group>";
-		};
 /* End PBXGroup section */
 
 /* Begin PBXHeadersBuildPhase section */
@@ -1195,13 +1178,11 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = C01FCF4A08A954540054247B /* Build configuration list for PBXNativeTarget "ImageOptim" */;
 			buildPhases = (
-				EB914242222205F054147613 /* [CP] Check Pods Manifest.lock */,
 				8D11072C0486CEB800E47090 /* Sources */,
 				5A7D24E113E5BC0C00815AAA /* Resources */,
 				5AC63C410E9ABCFD0053B879 /* Copy Frameworks */,
 				8D11072E0486CEB800E47090 /* Frameworks */,
 				5AC64F231AF3FDEF0032AA7F /* Embed Foundation Extensions */,
-				B95027BC6EC8F3DDB6F4DC87 /* [CP] Embed Pods Frameworks */,
 			);
 			buildRules = (
 			);
@@ -1536,23 +1517,6 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXShellScriptBuildPhase section */
-		B95027BC6EC8F3DDB6F4DC87 /* [CP] Embed Pods Frameworks */ = {
-			isa = PBXShellScriptBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputFileListPaths = (
-				"${PODS_ROOT}/Target Support Files/Pods-ImageOptim/Pods-ImageOptim-frameworks-${CONFIGURATION}-input-files.xcfilelist",
-			);
-			name = "[CP] Embed Pods Frameworks";
-			outputFileListPaths = (
-				"${PODS_ROOT}/Target Support Files/Pods-ImageOptim/Pods-ImageOptim-frameworks-${CONFIGURATION}-output-files.xcfilelist",
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-ImageOptim/Pods-ImageOptim-frameworks.sh\"\n";
-			showEnvVarsInLog = 0;
-		};
 		BB0000070000000000000020 /* Build Format Tools */ = {
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;
@@ -1570,28 +1534,6 @@
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
 			shellScript = "\"${SRCROOT}/../libjpeg/build-jxl-tools.sh\"\n\"${SRCROOT}/../libwebp/build-webp.sh\"\n\"${SRCROOT}/../libavif/build-avif.sh\"\n";
-			showEnvVarsInLog = 0;
-		};
-		EB914242222205F054147613 /* [CP] Check Pods Manifest.lock */ = {
-			isa = PBXShellScriptBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputFileListPaths = (
-			);
-			inputPaths = (
-				"${PODS_PODFILE_DIR_PATH}/Podfile.lock",
-				"${PODS_ROOT}/Manifest.lock",
-			);
-			name = "[CP] Check Pods Manifest.lock";
-			outputFileListPaths = (
-			);
-			outputPaths = (
-				"$(DERIVED_FILE_DIR)/Pods-ImageOptim-checkManifestLockResult.txt",
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "diff \"${PODS_PODFILE_DIR_PATH}/Podfile.lock\" \"${PODS_ROOT}/Manifest.lock\" > /dev/null\nif [ $? != 0 ] ; then\n    # print error to STDERR\n    echo \"error: The sandbox is not in sync with the Podfile.lock. Run 'pod install' or update your CocoaPods installation.\" >&2\n    exit 1\nfi\n# This output is used by Xcode 'outputs' to avoid re-running this script phase.\necho \"SUCCESS\" > \"${SCRIPT_OUTPUT_FILE_0}\"\n";
 			showEnvVarsInLog = 0;
 		};
 /* End PBXShellScriptBuildPhase section */
@@ -2235,7 +2177,6 @@
 		};
 		C01FCF4B08A954540054247B /* Debug */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 2A1DF0F6FFD873B77B9BEC8D /* Pods-ImageOptim.debug.xcconfig */;
 			buildSettings = {
 				CLANG_ENABLE_MODULES = YES;
 				CLANG_ENABLE_OBJC_ARC = YES;
@@ -2261,7 +2202,6 @@
 		};
 		C01FCF4C08A954540054247B /* Release */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = A97E39EBB4DE4AEAD7A115E1 /* Pods-ImageOptim.release.xcconfig */;
 			buildSettings = {
 				CLANG_ENABLE_MODULES = YES;
 				CLANG_ENABLE_OBJC_ARC = YES;
