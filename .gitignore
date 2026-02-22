@@ -162,3 +162,6 @@ svgo/build/
 svgo/node_modules/
 pngcrush/tmp/
 pngcrush/LICENSE
+advpng/libdeflate/
+advpng/zopfli/
+svgo/package-lock.json
