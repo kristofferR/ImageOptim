@@ -134,5 +134,9 @@ fi
 # Also copy jerror.h from libjpeg-turbo (needed by consumers)
 cp -f "$SRC_DIR/third_party/libjpeg-turbo/jerror.h" "$HEADER_DIR/"
 
+# jpegli's build may drop a generated header in the source root; remove it
+# so the libjxl submodule doesn't become dirty after a normal app build.
+rm -f "$SRC_DIR/jpeglib.h"
+
 touch "$MARKER"
 echo "jpegli: build complete."
