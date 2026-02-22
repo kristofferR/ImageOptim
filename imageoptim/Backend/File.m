@@ -10,6 +10,53 @@
 #import "TempFile.h"
 #import "../log.h"
 #import <assert.h>
+#import <stdint.h>
+
+static uint32_t ReadBE32(const unsigned char *data) {
+    return ((uint32_t)data[0] << 24) |
+           ((uint32_t)data[1] << 16) |
+           ((uint32_t)data[2] << 8) |
+           (uint32_t)data[3];
+}
+
+static uint64_t ReadBE64(const unsigned char *data) {
+    return ((uint64_t)ReadBE32(data) << 32) | ReadBE32(data + 4);
+}
+
+static BOOL ParseFtypBox(const unsigned char *bytes, NSUInteger length,
+                         NSUInteger *majorBrandOffset,
+                         NSUInteger *compatibleBrandsOffset,
+                         NSUInteger *compatibleBrandsLength) {
+    const unsigned char ftypmagic[] = {'f','t','y','p'};
+    if (!bytes || length < 16 || memcmp(bytes + 4, ftypmagic, sizeof(ftypmagic)) != 0) {
+        return NO;
+    }
+
+    uint64_t boxSize = ReadBE32(bytes);
+    NSUInteger headerSize = 8;
+
+    if (boxSize == 1) {
+        if (length < 24) {
+            return NO;
+        }
+        boxSize = ReadBE64(bytes + 8);
+        headerSize = 16;
+    } else if (boxSize == 0) {
+        boxSize = length;
+    }
+
+    if (boxSize < (uint64_t)headerSize + 8 || boxSize > length) {
+        return NO;
+    }
+
+    NSUInteger compatLen = (NSUInteger)boxSize - (headerSize + 8);
+    compatLen -= compatLen % 4; // Compatible brands are fourcc entries.
+
+    *majorBrandOffset = headerSize;
+    *compatibleBrandsOffset = headerSize + 8; // skip major brand + minor version
+    *compatibleBrandsLength = compatLen;
+    return YES;
+}
 
 @implementation File
 
@@ -35,10 +82,10 @@
     const unsigned char jxlcontainer[] = {0x00,0x00,0x00,0x0c,'J','X','L',' '};
     const unsigned char riffheader[] = {'R','I','F','F'};
     const unsigned char webpmagic[] = {'W','E','B','P'};
-    const unsigned char ftypmagic[] = {'f','t','y','p'};
     const unsigned char avifbrand[] = {'a','v','i','f'};
     const unsigned char avisbrand[] = {'a','v','i','s'};
     unsigned char fileHeaderBytes[24];
+    const unsigned char *fileBytes = fileData.bytes;
 
     if (!fileData || fileData.length < 12) {
         return nil;
@@ -67,13 +114,33 @@
         if (headerLen >= 21 && 0 == memcmp(fileHeaderBytes + 12, vp8x, sizeof(vp8x)) && (fileHeaderBytes[20] & 0x02)) {
             animated = YES;
         }
-    } else if (0 == memcmp(fileHeaderBytes + 4, ftypmagic, sizeof(ftypmagic)) &&
-               (0 == memcmp(fileHeaderBytes + 8, avifbrand, sizeof(avifbrand)) ||
-                0 == memcmp(fileHeaderBytes + 8, avisbrand, sizeof(avisbrand)))) {
-        type = FILETYPE_AVIF;
-        // avis brand = animated AVIF sequence
-        if (0 == memcmp(fileHeaderBytes + 8, avisbrand, sizeof(avisbrand))) {
-            animated = YES;
+    } else {
+        NSUInteger majorBrandOffset = 0;
+        NSUInteger compatibleBrandsOffset = 0;
+        NSUInteger compatibleBrandsLength = 0;
+        BOOL hasAvifBrand = NO;
+        BOOL hasAvisBrand = NO;
+
+        if (ParseFtypBox(fileBytes, fileData.length, &majorBrandOffset, &compatibleBrandsOffset, &compatibleBrandsLength)) {
+            if (0 == memcmp(fileBytes + majorBrandOffset, avifbrand, sizeof(avifbrand))) {
+                hasAvifBrand = YES;
+            } else if (0 == memcmp(fileBytes + majorBrandOffset, avisbrand, sizeof(avisbrand))) {
+                hasAvisBrand = YES;
+            }
+
+            NSUInteger compatibleEnd = compatibleBrandsOffset + compatibleBrandsLength;
+            for (NSUInteger offset = compatibleBrandsOffset; offset + 4 <= compatibleEnd; offset += 4) {
+                if (0 == memcmp(fileBytes + offset, avifbrand, sizeof(avifbrand))) {
+                    hasAvifBrand = YES;
+                } else if (0 == memcmp(fileBytes + offset, avisbrand, sizeof(avisbrand))) {
+                    hasAvisBrand = YES;
+                }
+            }
+        }
+
+        if (hasAvifBrand || hasAvisBrand) {
+            type = FILETYPE_AVIF;
+            animated = hasAvisBrand;
         }
     }
 
