@@ -94,18 +94,17 @@ static void CleanupDecodedFrames(NSString *pngPath) {
     NSURL *pngTemp = [[temp URLByDeletingPathExtension] URLByAppendingPathExtension:@"png"];
     NSString *pngPath = pngTemp.path;
 
-    NSTask *decodeTask = [NSTask new];
-    [decodeTask setLaunchPath:djxlPath];
-    [decodeTask setArguments:@[file.path.path, pngPath, @"--output_frames"]];
+    BOOL decoded = NO;
     @try {
-        [decodeTask launch];
-        [decodeTask waitUntilExit];
+        [self taskWithPath:djxlPath arguments:@[file.path.path, pngPath, @"--output_frames"]];
+        [self launchTask];
+        decoded = [self waitUntilTaskExit];
     } @catch (NSException *e) {
         IOWarn("djxl failed: %@", e);
         return NO;
     }
 
-    if ([decodeTask terminationStatus] != 0) {
+    if (!decoded || [self isCancelled]) {
         CleanupDecodedFrames(pngPath);
         return NO;
     }

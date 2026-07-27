@@ -23,6 +23,11 @@ static uint64_t ReadBE64(const unsigned char *data) {
     return ((uint64_t)ReadBE32(data) << 32) | ReadBE32(data + 4);
 }
 
+static BOOL HasPrefix(const unsigned char *bytes, NSUInteger length,
+                      const unsigned char *prefix, NSUInteger prefixLength) {
+    return length >= prefixLength && memcmp(bytes, prefix, prefixLength) == 0;
+}
+
 static BOOL ParseFtypBox(const unsigned char *bytes, NSUInteger length,
                          NSUInteger *majorBrandOffset,
                          NSUInteger *compatibleBrandsOffset,
@@ -84,34 +89,32 @@ static BOOL ParseFtypBox(const unsigned char *bytes, NSUInteger length,
     const unsigned char webpmagic[] = {'W','E','B','P'};
     const unsigned char avifbrand[] = {'a','v','i','f'};
     const unsigned char avisbrand[] = {'a','v','i','s'};
-    unsigned char fileHeaderBytes[24];
     const unsigned char *fileBytes = fileData.bytes;
 
-    if (!fileData || fileData.length < 12) {
+    if (!fileData || !fileData.length) {
         return nil;
     }
-
-    NSUInteger headerLen = MIN(fileData.length, sizeof(fileHeaderBytes));
-    [fileData getBytes:fileHeaderBytes length:headerLen];
 
     enum IOFileType type = 0;
     BOOL animated = NO;
 
-    if (0 == memcmp(fileHeaderBytes, pngheader, sizeof(pngheader))) {
+    if (HasPrefix(fileBytes, fileData.length, pngheader, sizeof(pngheader))) {
         type = FILETYPE_PNG;
-    } else if (0 == memcmp(fileHeaderBytes, jpegheader, sizeof(jpegheader))) {
+    } else if (HasPrefix(fileBytes, fileData.length, jpegheader, sizeof(jpegheader))) {
         type = FILETYPE_JPEG;
-    } else if (0 == memcmp(fileHeaderBytes, gifheader, sizeof(gifheader))) {
+    } else if (HasPrefix(fileBytes, fileData.length, gifheader, sizeof(gifheader))) {
         type = FILETYPE_GIF;
-    } else if (0 == memcmp(fileHeaderBytes, svgheader, sizeof(svgheader)) || [aPath.pathExtension isEqualToString:@"svg"]) {
+    } else if (HasPrefix(fileBytes, fileData.length, svgheader, sizeof(svgheader)) || [aPath.pathExtension isEqualToString:@"svg"]) {
         type = FILETYPE_SVG;
-    } else if (0 == memcmp(fileHeaderBytes, jxlheader, sizeof(jxlheader)) || 0 == memcmp(fileHeaderBytes, jxlcontainer, sizeof(jxlcontainer))) {
+    } else if (HasPrefix(fileBytes, fileData.length, jxlheader, sizeof(jxlheader)) ||
+               HasPrefix(fileBytes, fileData.length, jxlcontainer, sizeof(jxlcontainer))) {
         type = FILETYPE_JXL;
-    } else if (0 == memcmp(fileHeaderBytes, riffheader, sizeof(riffheader)) && 0 == memcmp(fileHeaderBytes + 8, webpmagic, sizeof(webpmagic))) {
+    } else if (HasPrefix(fileBytes, fileData.length, riffheader, sizeof(riffheader)) &&
+               fileData.length >= 12 && 0 == memcmp(fileBytes + 8, webpmagic, sizeof(webpmagic))) {
         type = FILETYPE_WEBP;
         // VP8X chunk at offset 12 has flags at offset 20; bit 1 = animation
         const unsigned char vp8x[] = {'V','P','8','X'};
-        if (headerLen >= 21 && 0 == memcmp(fileHeaderBytes + 12, vp8x, sizeof(vp8x)) && (fileHeaderBytes[20] & 0x02)) {
+        if (fileData.length >= 21 && 0 == memcmp(fileBytes + 12, vp8x, sizeof(vp8x)) && (fileBytes[20] & 0x02)) {
             animated = YES;
         }
     } else {

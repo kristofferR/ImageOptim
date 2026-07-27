@@ -39,18 +39,17 @@
     // Decode WebP to temp PNG
     NSURL *pngTemp = [[temp URLByDeletingPathExtension] URLByAppendingPathExtension:@"png"];
 
-    NSTask *decodeTask = [NSTask new];
-    [decodeTask setLaunchPath:dwebpPath];
-    [decodeTask setArguments:@[file.path.path, @"-o", pngTemp.path]];
+    BOOL decoded = NO;
     @try {
-        [decodeTask launch];
-        [decodeTask waitUntilExit];
+        [self taskWithPath:dwebpPath arguments:@[file.path.path, @"-o", pngTemp.path]];
+        [self launchTask];
+        decoded = [self waitUntilTaskExit];
     } @catch (NSException *e) {
         IOWarn("dwebp failed: %@", e);
         return NO;
     }
 
-    if ([decodeTask terminationStatus] != 0) {
+    if (!decoded || [self isCancelled]) {
         [[NSFileManager defaultManager] removeItemAtURL:pngTemp error:nil];
         return NO;
     }
