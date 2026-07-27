@@ -59,7 +59,7 @@
     if (lossy && quality < 100) {
         [args addObjectsFromArray:@[@"-q", [NSString stringWithFormat:@"%ld", (long)quality]]];
     } else {
-        [args addObject:@"-lossless"];
+        [args addObjectsFromArray:@[@"-lossless", @"-exact"]];
     }
     [args addObjectsFromArray:@[@"-m", @"6", @"-mt", pngTemp.path, @"-o", temp.path]];
 

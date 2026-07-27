@@ -136,6 +136,7 @@
 /* Begin PBXShellScriptBuildPhase section */
 		AA000001000000000000C001 /* Build Jpegli */ = {
 			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
 			buildActionMask = 2147483647;
 			files = (
 			);

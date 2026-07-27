@@ -92,7 +92,7 @@ static void CleanupDecodedFiles(NSString *pngPath) {
     }
     NSError *error = nil;
     NSRegularExpression *bitDepthPattern =
-        [NSRegularExpression regularExpressionWithPattern:@"(?:, |bits per sample: )([0-9]+)(?:-bit)?"
+        [NSRegularExpression regularExpressionWithPattern:@"(?:, (?=[0-9]+-bit\\b)|bits per sample: )([0-9]+)(?:-bit\\b)?"
                                                    options:0
                                                      error:&error];
     if (!bitDepthPattern || error) {

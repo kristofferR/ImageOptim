@@ -42,9 +42,12 @@ fi
 build_deps() {
     local ARCH=$1
     local DEPS_DIR="$BUILD_ROOT/deps-$ARCH"
+    local DEPS_MARKER="$DEPS_DIR/.build_marker"
 
-    # Skip if deps already built
-    if [ -f "$DEPS_DIR/install/lib/libpng.a" ] && [ -f "$DEPS_DIR/install/lib/libjpeg.a" ]; then
+    if build_cache_is_current "$DEPS_MARKER" "$BUILD_SIGNATURE" \
+        "$DEPS_DIR/install/lib/libz.a" \
+        "$DEPS_DIR/install/lib/libpng.a" \
+        "$DEPS_DIR/install/lib/libjpeg.a"; then
         echo "avif: dependencies already built for $ARCH"
         return
     fi
@@ -102,6 +105,8 @@ build_deps() {
         -G Ninja 2>&1 | tail -3
     cmake --build "$JPEG_BUILD" --config Release -- -j"$(sysctl -n hw.ncpu)" 2>&1 | tail -3
     cmake --install "$JPEG_BUILD" --config Release 2>&1 | tail -3
+
+    build_cache_write "$DEPS_MARKER" "$BUILD_SIGNATURE"
 }
 
 build_arch() {
