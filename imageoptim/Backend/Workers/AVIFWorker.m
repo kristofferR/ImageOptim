@@ -76,7 +76,14 @@
     NSString *toolName = (lossy && quality < 100)
         ? [NSString stringWithFormat:@"AVIF %ld%%", (long)quality]
         : @"AVIF";
-    return [job setFileOptimized:[file tempCopyOfPath:temp] toolName:toolName];
+    TempFile *output = [file tempCopyOfPath:temp];
+    if (!output) {
+        return NO;
+    }
+    if ([self makesNonOptimizingModifications] && output.byteSize > file.byteSize * 0.95) {
+        return NO; // Require at least 5% savings when degrading the image
+    }
+    return [job setFileOptimized:output toolName:toolName];
 }
 
 @end

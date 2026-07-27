@@ -17,17 +17,18 @@ ARCHS=(arm64 x86_64)
 
 mkdir -p "$OUTPUT_DIR"
 
-# Check if we need to rebuild
+BUILD_CACHE_HELPER="$SCRIPT_DIR/../scripts/build-cache.sh"
+source "$BUILD_CACHE_HELPER"
+
 MARKER="$OUTPUT_DIR/.build_marker"
-if [ -f "$MARKER" ] && [ -f "$OUTPUT_DIR/libjpegli-static.a" ] && [ -f "$OUTPUT_DIR/libhwy.a" ]; then
-    MARKER_TIME=$(stat -f %m "$MARKER" 2>/dev/null || echo 0)
-    CMAKE_TIME=$(stat -f %m "$SRC_DIR/lib/jpegli.cmake" 2>/dev/null || echo 1)
-    WRAPPER_TIME=$(stat -f %m "$SRC_DIR/lib/jpegli/libjpeg_wrapper.cc" 2>/dev/null || echo 1)
-    MAX_SRC_TIME=$((CMAKE_TIME > WRAPPER_TIME ? CMAKE_TIME : WRAPPER_TIME))
-    if [ "$MARKER_TIME" -ge "$MAX_SRC_TIME" ]; then
-        echo "jpegli: already built (up to date)"
-        exit 0
-    fi
+BUILD_SIGNATURE=$(build_cache_signature \
+    "$0" \
+    "deployment-target=$MACOSX_DEPLOYMENT_TARGET;archs=${ARCHS[*]}" \
+    "$SRC_DIR")
+if build_cache_is_current "$MARKER" "$BUILD_SIGNATURE" \
+    "$OUTPUT_DIR/libjpegli-static.a" "$OUTPUT_DIR/libhwy.a"; then
+    echo "jpegli: already built (up to date)"
+    exit 0
 fi
 
 build_arch() {
@@ -134,5 +135,5 @@ fi
 # Also copy jerror.h from libjpeg-turbo (needed by consumers)
 cp -f "$SRC_DIR/third_party/libjpeg-turbo/jerror.h" "$HEADER_DIR/"
 
-touch "$MARKER"
+build_cache_write "$MARKER" "$BUILD_SIGNATURE"
 echo "jpegli: build complete."

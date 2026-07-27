@@ -26,15 +26,18 @@ ARCHS=(arm64 x86_64)
 
 mkdir -p "$OUTPUT_DIR"
 
-# Check if we need to rebuild
+BUILD_CACHE_HELPER="$SCRIPT_DIR/../scripts/build-cache.sh"
+source "$BUILD_CACHE_HELPER"
+
 MARKER="$OUTPUT_DIR/.build_marker"
-if [ -f "$MARKER" ] && [ -f "$OUTPUT_DIR/cwebp" ] && [ -f "$OUTPUT_DIR/dwebp" ]; then
-    MARKER_TIME=$(stat -f %m "$MARKER" 2>/dev/null || echo 0)
-    CMAKE_TIME=$(stat -f %m "$SRC_DIR/CMakeLists.txt" 2>/dev/null || echo 1)
-    if [ "$MARKER_TIME" -ge "$CMAKE_TIME" ]; then
-        echo "webp: already built (up to date)"
-        exit 0
-    fi
+BUILD_SIGNATURE=$(build_cache_signature \
+    "$0" \
+    "deployment-target=$MACOSX_DEPLOYMENT_TARGET;archs=${ARCHS[*]}" \
+    "$SRC_DIR" "$LIBPNG_SRC" "$ZLIB_SRC" "$LIBJPEG_SRC")
+if build_cache_is_current "$MARKER" "$BUILD_SIGNATURE" \
+    "$OUTPUT_DIR/cwebp" "$OUTPUT_DIR/dwebp"; then
+    echo "webp: already built (up to date)"
+    exit 0
 fi
 
 build_deps() {
@@ -164,5 +167,5 @@ for TOOL in cwebp dwebp; do
     echo "  Created: $OUTPUT_DIR/$TOOL"
 done
 
-touch "$MARKER"
+build_cache_write "$MARKER" "$BUILD_SIGNATURE"
 echo "webp: build complete."

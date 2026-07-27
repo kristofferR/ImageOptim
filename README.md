@@ -9,9 +9,10 @@ Requires:
 * Xcode
 * [Rust](https://rust-lang.org/) installed via [rustup](https://www.rustup.rs/) (not Homebrew).
 * [Homebrew](https://brew.sh/) for dependency management
+* [CMake](https://cmake.org/) and [Ninja](https://ninja-build.org/) (`brew install cmake ninja`)
 
 ```sh
-git clone --recursive <repo-url> ImageOptim
+git clone --recursive https://github.com/ImageOptim/ImageOptim.git ImageOptim
 cd ImageOptim
 ```
 

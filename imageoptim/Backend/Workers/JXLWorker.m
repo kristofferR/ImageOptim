@@ -3,7 +3,7 @@
 #import "../TempFile.h"
 #import "../../log.h"
 
-static BOOL HasMultipleDecodedFrames(NSString *pngPath) {
+static BOOL HasAdditionalDecodedFiles(NSString *pngPath) {
     NSFileManager *fm = [NSFileManager defaultManager];
     NSString *dirPath = [pngPath stringByDeletingLastPathComponent];
     NSString *baseName = [[pngPath lastPathComponent] stringByDeletingPathExtension];
@@ -40,7 +40,7 @@ static NSString *DecodedFramePath(NSString *pngPath) {
     return nil;
 }
 
-static void CleanupDecodedFrames(NSString *pngPath) {
+static void CleanupDecodedFiles(NSString *pngPath) {
     NSFileManager *fm = [NSFileManager defaultManager];
     NSString *dirPath = [pngPath stringByDeletingLastPathComponent];
     NSString *baseName = [[pngPath lastPathComponent] stringByDeletingPathExtension];
@@ -96,27 +96,33 @@ static void CleanupDecodedFrames(NSString *pngPath) {
 
     BOOL decoded = NO;
     @try {
-        [self taskWithPath:djxlPath arguments:@[file.path.path, pngPath, @"--output_frames"]];
+        [self taskWithPath:djxlPath arguments:@[
+            file.path.path,
+            pngPath,
+            @"--output_frames",
+            @"--output_extra_channels"
+        ]];
         [self launchTask];
         decoded = [self waitUntilTaskExit];
     } @catch (NSException *e) {
         IOWarn("djxl failed: %@", e);
+        CleanupDecodedFiles(pngPath);
         return NO;
     }
 
     if (!decoded || [self isCancelled]) {
-        CleanupDecodedFrames(pngPath);
+        CleanupDecodedFiles(pngPath);
         return NO;
     }
 
-    if (HasMultipleDecodedFrames(pngPath)) {
-        CleanupDecodedFrames(pngPath);
-        return NO; // Animated JXL expands to multiple frame files with --output_frames
+    if (HasAdditionalDecodedFiles(pngPath)) {
+        CleanupDecodedFiles(pngPath);
+        return NO; // PNG cannot preserve animations or additional JXL channels
     }
 
     NSString *decodedFramePath = DecodedFramePath(pngPath);
     if (!decodedFramePath) {
-        CleanupDecodedFrames(pngPath);
+        CleanupDecodedFiles(pngPath);
         return NO;
     }
 
@@ -133,7 +139,7 @@ static void CleanupDecodedFrames(NSString *pngPath) {
     [self launchTask];
     BOOL success = [self waitUntilTaskExit];
 
-    CleanupDecodedFrames(pngPath);
+    CleanupDecodedFiles(pngPath);
 
     if (!success) {
         return NO;
@@ -142,7 +148,14 @@ static void CleanupDecodedFrames(NSString *pngPath) {
     NSString *toolName = (lossy && quality < 100)
         ? [NSString stringWithFormat:@"JPEG XL %ld%%", (long)quality]
         : @"JPEG XL";
-    return [job setFileOptimized:[file tempCopyOfPath:temp] toolName:toolName];
+    TempFile *output = [file tempCopyOfPath:temp];
+    if (!output) {
+        return NO;
+    }
+    if ([self makesNonOptimizingModifications] && output.byteSize > file.byteSize * 0.95) {
+        return NO; // Require at least 5% savings when degrading the image
+    }
+    return [job setFileOptimized:output toolName:toolName];
 }
 
 @end
