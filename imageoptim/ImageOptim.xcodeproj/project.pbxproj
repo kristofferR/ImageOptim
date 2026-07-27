@@ -53,6 +53,7 @@
 		BB0000040000000000000014 /* djxl in CopyFiles */ = {isa = PBXBuildFile; fileRef = BB0000040000000000000004 /* djxl */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
 		BB0000050000000000000015 /* avifenc in CopyFiles */ = {isa = PBXBuildFile; fileRef = BB0000050000000000000005 /* avifenc */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
 		BB0000060000000000000016 /* avifdec in CopyFiles */ = {isa = PBXBuildFile; fileRef = BB0000060000000000000006 /* avifdec */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
+		BB0000080000000000000018 /* jxlinfo in CopyFiles */ = {isa = PBXBuildFile; fileRef = BB0000080000000000000008 /* jxlinfo */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
 		5A7FB7261E2C3E1600481B4A /* svgo.js in CopyFiles */ = {isa = PBXBuildFile; fileRef = 5A7FB7251E2C3E1600481B4A /* svgo.js */; };
 		5A99FE84140AE80600BB2F79 /* Quartz.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 5A99FE83140AE80600BB2F79 /* Quartz.framework */; };
 		5AA1B7E9140AC55F00B5707C /* RevealButtonCell.m in Sources */ = {isa = PBXBuildFile; fileRef = 5A391880140A9B10001B4FD7 /* RevealButtonCell.m */; };
@@ -395,6 +396,7 @@
 				BB0000040000000000000014 /* djxl in CopyFiles */,
 				BB0000050000000000000015 /* avifenc in CopyFiles */,
 				BB0000060000000000000016 /* avifdec in CopyFiles */,
+				BB0000080000000000000018 /* jxlinfo in CopyFiles */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -673,6 +675,7 @@
 		BB0000040000000000000004 /* djxl */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.executable"; name = djxl; path = ../../libjpeg/build-tools/djxl; sourceTree = "<group>"; };
 		BB0000050000000000000005 /* avifenc */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.executable"; name = avifenc; path = ../../libavif/build/avifenc; sourceTree = "<group>"; };
 		BB0000060000000000000006 /* avifdec */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.executable"; name = avifdec; path = ../../libavif/build/avifdec; sourceTree = "<group>"; };
+		BB0000080000000000000008 /* jxlinfo */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.executable"; name = jxlinfo; path = ../../libjpeg/build-tools/jxlinfo; sourceTree = "<group>"; };
 		5AF8536A1B49F21C00CF76F5 /* FadeView.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FadeView.h; sourceTree = "<group>"; };
 		5AF8536B1B49F21C00CF76F5 /* FadeView.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = FadeView.m; sourceTree = "<group>"; };
 		5FD569DB21A059A000BC9F82 /* JobProxy.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = JobProxy.h; sourceTree = "<group>"; };
@@ -967,6 +970,7 @@
 				BB0000040000000000000004 /* djxl */,
 				BB0000050000000000000005 /* avifenc */,
 				BB0000060000000000000006 /* avifdec */,
+				BB0000080000000000000008 /* jxlinfo */,
 				5ABE15451AE5072300861C6B /* Info.plist */,
 				5A7FB7251E2C3E1600481B4A /* svgo.js */,
 			);

@@ -1,5 +1,5 @@
 #!/bin/bash
-# Build cjxl + djxl as universal static executables for macOS.
+# Build cjxl, djxl, and jxlinfo as universal static executables for macOS.
 # Called from Xcode's "Run Script" build phase.
 # Uses the same libjxl source tree as jpegli but with a separate build dir.
 # Builds libjpeg-turbo from third_party for JPEG codec support.
@@ -29,7 +29,7 @@ BUILD_SIGNATURE=$(build_cache_signature \
     "deployment-target=$MACOSX_DEPLOYMENT_TARGET;archs=${ARCHS[*]}" \
     "$SRC_DIR")
 if build_cache_is_current "$MARKER" "$BUILD_SIGNATURE" \
-    "$OUTPUT_DIR/cjxl" "$OUTPUT_DIR/djxl"; then
+    "$OUTPUT_DIR/cjxl" "$OUTPUT_DIR/djxl" "$OUTPUT_DIR/jxlinfo"; then
     echo "jxl-tools: already built (up to date)"
     exit 0
 fi
@@ -100,7 +100,7 @@ build_arch() {
         -G Ninja \
         2>&1 | tail -5
 
-    cmake --build "$BUILD_DIR" --target cjxl djxl --config Release -- -j"$(sysctl -n hw.ncpu)" 2>&1 | tail -5
+    cmake --build "$BUILD_DIR" --target cjxl djxl jxlinfo --config Release -- -j"$(sysctl -n hw.ncpu)" 2>&1 | tail -5
 }
 
 for ARCH in "${ARCHS[@]}"; do
@@ -109,7 +109,7 @@ done
 
 echo "jxl-tools: creating output binaries..."
 
-for TOOL in cjxl djxl; do
+for TOOL in cjxl djxl jxlinfo; do
     INPUTS=()
     for ARCH in "${ARCHS[@]}"; do
         TOOL_PATH="$BUILD_ROOT/$ARCH/tools/$TOOL"

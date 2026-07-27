@@ -80,6 +80,12 @@
                                       @"GifsicleEnabled" : @(YES),
                                       @"PngMinQuality" : @(70),
                                       @"JpegOptimMaxQuality" : @(80),
+                                      @"AvifEnabled" : @(YES),
+                                      @"WebpEnabled" : @(YES),
+                                      @"JxlEnabled" : @(YES),
+                                      @"AvifQuality" : @(85),
+                                      @"WebpQuality" : @(85),
+                                      @"JxlQuality" : @(85),
                                       @"LossyEnabled" : @(YES),
                                   }];
 

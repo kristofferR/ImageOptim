@@ -22,6 +22,20 @@
     return lossy && quality < 100;
 }
 
+- (BOOL)hasGainMapAtPath:(NSString *)path decoderPath:(NSString *)avifdecPath {
+    [self taskWithPath:avifdecPath arguments:@[@"--info", path]];
+    NSPipe *outputPipe = [NSPipe pipe];
+    [task setStandardOutput:outputPipe];
+    [self launchTask];
+    NSData *outputData = [[outputPipe fileHandleForReading] readDataToEndOfFile];
+    if (![self waitUntilTaskExit]) {
+        return YES; // Do not risk changing files whose auxiliary data cannot be inspected
+    }
+
+    NSString *output = [[NSString alloc] initWithData:outputData encoding:NSUTF8StringEncoding];
+    return [output rangeOfString:@" * Gain map       : Absent"].location == NSNotFound;
+}
+
 - (BOOL)optimizeFile:(File *)file toTempPath:(NSURL *)temp {
     if (file->isAnimated) {
         return NO; // Animated AVIF cannot be safely re-encoded via PNG
@@ -34,6 +48,10 @@
         IOWarn("avifenc/avifdec not found in bundle");
         [job setError:@"AVIF tools not found"];
         return NO;
+    }
+
+    if ([self hasGainMapAtPath:file.path.path decoderPath:avifdecPath]) {
+        return NO; // PNG cannot preserve AVIF gain maps
     }
 
     // Decode AVIF to temp PNG

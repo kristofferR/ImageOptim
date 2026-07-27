@@ -76,6 +76,43 @@ static void CleanupDecodedFiles(NSString *pngPath) {
     return lossy && quality < 100;
 }
 
+- (BOOL)hasPngCompatibleSamplesAtPath:(NSString *)path infoPath:(NSString *)jxlinfoPath {
+    [self taskWithPath:jxlinfoPath arguments:@[@"-v", path]];
+    NSPipe *outputPipe = [NSPipe pipe];
+    [task setStandardOutput:outputPipe];
+    [self launchTask];
+    NSData *outputData = [[outputPipe fileHandleForReading] readDataToEndOfFile];
+    if (![self waitUntilTaskExit]) {
+        return NO;
+    }
+
+    NSString *output = [[NSString alloc] initWithData:outputData encoding:NSUTF8StringEncoding];
+    if (!output) {
+        return NO;
+    }
+    NSError *error = nil;
+    NSRegularExpression *bitDepthPattern =
+        [NSRegularExpression regularExpressionWithPattern:@"(?:, |bits per sample: )([0-9]+)(?:-bit)?"
+                                                   options:0
+                                                     error:&error];
+    if (!bitDepthPattern || error) {
+        return NO;
+    }
+
+    NSArray<NSTextCheckingResult *> *matches =
+        [bitDepthPattern matchesInString:output options:0 range:NSMakeRange(0, output.length)];
+    if (!matches.count || [output rangeOfString:@"float ("].location != NSNotFound ||
+        [output rangeOfString:@"float, with exponent_bits_per_sample:"].location != NSNotFound) {
+        return NO;
+    }
+    for (NSTextCheckingResult *match in matches) {
+        if ([[output substringWithRange:[match rangeAtIndex:1]] integerValue] > 16) {
+            return NO;
+        }
+    }
+    return YES;
+}
+
 - (BOOL)optimizeFile:(File *)file toTempPath:(NSURL *)temp {
     if (file->isAnimated) {
         return NO; // Animated JXL cannot be safely re-encoded via PNG
@@ -83,11 +120,16 @@ static void CleanupDecodedFiles(NSString *pngPath) {
 
     NSString *djxlPath = [self pathForExecutableName:@"djxl"];
     NSString *cjxlPath = [self pathForExecutableName:@"cjxl"];
+    NSString *jxlinfoPath = [self pathForExecutableName:@"jxlinfo"];
 
-    if (!djxlPath || !cjxlPath) {
-        IOWarn("cjxl/djxl not found in bundle");
+    if (!djxlPath || !cjxlPath || !jxlinfoPath) {
+        IOWarn("cjxl/djxl/jxlinfo not found in bundle");
         [job setError:@"JPEG XL tools not found"];
         return NO;
+    }
+
+    if (![self hasPngCompatibleSamplesAtPath:file.path.path infoPath:jxlinfoPath]) {
+        return NO; // PNG cannot preserve floating-point or greater-than-16-bit samples
     }
 
     // Decode JXL to temp PNG
