@@ -15,6 +15,7 @@
 #import "Workers/JpegtranWorker.h"
 #import "Workers/GifsicleWorker.h"
 #import "Workers/SvgoWorker.h"
+#import "Workers/AVIFWorker.h"
 #import <sys/xattr.h>
 #import "log.h"
 #include "ResultsDb.h"
@@ -622,6 +623,16 @@
         case FILETYPE_SVG:
             if ([defs boolForKey:@"SvgoEnabled"]) {
                 [worker_list addObject:[[SvgoWorker alloc] initWithLossy:lossyEnabled job:self]];
+            }
+            break;
+        case FILETYPE_AVIF:
+            if ([defs boolForKey:@"AvifEnabled"]) {
+                // re-running lossy encoding on an already-lossy result would compound generation loss
+                AVIFWorker *w = [[AVIFWorker alloc] initWithLossy:(lossyEnabled && !lossyConverted) defaults:defs file:self];
+                if ([w makesNonOptimizingModifications]) {
+                    lossyConverted = YES;
+                }
+                [worker_list addObject:w];
             }
             break;
         default:
