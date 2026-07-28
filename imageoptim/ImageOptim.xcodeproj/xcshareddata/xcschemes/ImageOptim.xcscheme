@@ -20,6 +20,20 @@
                ReferencedContainer = "container:ImageOptim.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
+         <BuildActionEntry
+            buildForTesting = "YES"
+            buildForRunning = "NO"
+            buildForProfiling = "NO"
+            buildForArchiving = "NO"
+            buildForAnalyzing = "YES">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "5ABE154B1AE5072300861C6B"
+               BuildableName = "BackendTests.xctest"
+               BlueprintName = "BackendTests"
+               ReferencedContainer = "container:ImageOptim.xcodeproj">
+            </BuildableReference>
+         </BuildActionEntry>
       </BuildActionEntries>
    </BuildAction>
    <TestAction
