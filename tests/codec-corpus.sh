@@ -31,7 +31,9 @@ set -uo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 CACHE_DIR="$SCRIPT_DIR/corpus-cache"
-WORK_DIR="${TMPDIR:-/tmp}/imageoptim-corpus.$$"
+# mktemp, not a predictable name: on a shared /tmp anyone can pre-create a
+# predictable directory and read or redirect every fixture written into it.
+WORK_DIR="$(mktemp -d "${TMPDIR:-/tmp}/imageoptim-corpus.XXXXXX")" || exit 1
 
 [ "${1:-}" = "--refresh" ] && rm -rf "$CACHE_DIR"
 
@@ -191,7 +193,6 @@ fetch_corpus() {
     fi
 }
 
-mkdir -p "$WORK_DIR"
 echo
 echo "fetching corpus into $CACHE_DIR"
 fetch_corpus
@@ -223,7 +224,9 @@ dimensions_of() {
 # do on every host. Decoding to PNG — which sips reads everywhere — keeps the
 # invariant checked instead of leaving the encoder's output unexamined.
 decoded_dimensions_of() {
-    local src=$1 png="$WORK_DIR/probe-$(basename "$src").png"
+    local src=$1
+    local png
+    png="$WORK_DIR/probe-$(basename "$src").png"
     rm -f "$png"
     case "$src" in
         *.avif|*.avifs) "$TOOLS/avifdec" "$src" "$png" >/dev/null 2>&1 ;;

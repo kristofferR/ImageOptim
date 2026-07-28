@@ -24,6 +24,20 @@ static File *Detect(NSData *data) {
     return [[File alloc] initWithData:data fromPath:DummyPath()];
 }
 
+- (void)setUp {
+    // So a failed XCTAssertNotNil stops the test before the ivar read below.
+    self.continueAfterFailure = NO;
+}
+
+/* File returns nil for input it cannot even read, and an ivar read on that
+   crashes instead of reporting it, so every detection expected to produce a
+   File goes through here. */
+- (File *)detected:(NSData *)data {
+    File *file = Detect(data);
+    XCTAssertNotNil(file);
+    return file;
+}
+
 static void AppendBE32(NSMutableData *data, uint32_t value) {
     unsigned char bytes[4] = {
         (unsigned char)(value >> 24), (unsigned char)(value >> 16),
@@ -61,10 +75,10 @@ static NSData *AvifFile(NSString *majorBrand, NSArray<NSString *> *compatibleBra
     const unsigned char jpeg[] = {0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10};
     const unsigned char gif[] = {'G', 'I', 'F', '8', '9', 'a'};
 
-    XCTAssertEqual(Detect([NSData dataWithBytes:png length:sizeof(png)])->fileType, FILETYPE_PNG);
-    XCTAssertEqual(Detect([NSData dataWithBytes:jpeg length:sizeof(jpeg)])->fileType, FILETYPE_JPEG);
-    XCTAssertEqual(Detect([NSData dataWithBytes:gif length:sizeof(gif)])->fileType, FILETYPE_GIF);
-    XCTAssertEqual(Detect([@"<svg xmlns=\"...\">" dataUsingEncoding:NSUTF8StringEncoding])->fileType, FILETYPE_SVG);
+    XCTAssertEqual([self detected:[NSData dataWithBytes:png length:sizeof(png)]]->fileType, FILETYPE_PNG);
+    XCTAssertEqual([self detected:[NSData dataWithBytes:jpeg length:sizeof(jpeg)]]->fileType, FILETYPE_JPEG);
+    XCTAssertEqual([self detected:[NSData dataWithBytes:gif length:sizeof(gif)]]->fileType, FILETYPE_GIF);
+    XCTAssertEqual([self detected:[@"<svg xmlns=\"...\">" dataUsingEncoding:NSUTF8StringEncoding]]->fileType, FILETYPE_SVG);
 }
 
 - (void)testRejectsTruncatedInput {
@@ -77,7 +91,7 @@ static NSData *AvifFile(NSString *majorBrand, NSArray<NSString *> *compatibleBra
 #pragma mark - AVIF
 
 - (void)testDetectsAvifByMajorBrand {
-    File *file = Detect(AvifFile(@"avif", @[@"mif1", @"miaf"]));
+    File *file = [self detected:AvifFile(@"avif", @[@"mif1", @"miaf"])];
     XCTAssertEqual(file->fileType, FILETYPE_AVIF);
     XCTAssertFalse(file->isAnimated);
 }
@@ -85,35 +99,35 @@ static NSData *AvifFile(NSString *majorBrand, NSArray<NSString *> *compatibleBra
 /* Plenty of AVIF files in the wild carry some other major brand and only list
    avif as compatible, which is why the compatible-brands list is scanned. */
 - (void)testDetectsAvifListedOnlyAsCompatibleBrand {
-    File *file = Detect(AvifFile(@"mif1", @[@"miaf", @"avif"]));
+    File *file = [self detected:AvifFile(@"mif1", @[@"miaf", @"avif"])];
     XCTAssertEqual(file->fileType, FILETYPE_AVIF);
     XCTAssertFalse(file->isAnimated);
 }
 
 - (void)testDetectsAnimatedAvifSequence {
-    File *byMajorBrand = Detect(AvifFile(@"avis", @[@"msf1"]));
+    File *byMajorBrand = [self detected:AvifFile(@"avis", @[@"msf1"])];
     XCTAssertEqual(byMajorBrand->fileType, FILETYPE_AVIF);
     XCTAssertTrue(byMajorBrand->isAnimated, @"avis must be flagged: avifenc cannot re-encode a sequence");
 
-    File *byCompatibleBrand = Detect(AvifFile(@"mif1", @[@"avis"]));
+    File *byCompatibleBrand = [self detected:AvifFile(@"mif1", @[@"avis"])];
     XCTAssertEqual(byCompatibleBrand->fileType, FILETYPE_AVIF);
     XCTAssertTrue(byCompatibleBrand->isAnimated);
 }
 
 - (void)testDetectsAvifWith64BitBoxSize {
     NSData *data = FtypBox(24, @"avif", @[@"mif1"], YES);
-    XCTAssertEqual(Detect(data)->fileType, FILETYPE_AVIF);
+    XCTAssertEqual([self detected:data]->fileType, FILETYPE_AVIF);
 }
 
 /* size == 0 means the box runs to end of file. */
 - (void)testDetectsAvifWithBoxExtendingToEndOfFile {
     NSData *data = FtypBox(0, @"avif", @[@"mif1"], NO);
-    XCTAssertEqual(Detect(data)->fileType, FILETYPE_AVIF);
+    XCTAssertEqual([self detected:data]->fileType, FILETYPE_AVIF);
 }
 
 - (void)testIgnoresNonAvifIsoBmff {
-    XCTAssertEqual(Detect(AvifFile(@"mp42", @[@"isom", @"mp42"]))->fileType, 0);
-    XCTAssertEqual(Detect(AvifFile(@"heic", @[@"mif1", @"heic"]))->fileType, 0);
+    XCTAssertEqual([self detected:AvifFile(@"mp42", @[@"isom", @"mp42"])]->fileType, 0);
+    XCTAssertEqual([self detected:AvifFile(@"heic", @[@"mif1", @"heic"])]->fileType, 0);
 }
 
 /* A brand list that stops mid-brand must not be read past its end. The declared
@@ -122,27 +136,27 @@ static NSData *AvifFile(NSString *majorBrand, NSArray<NSString *> *compatibleBra
 - (void)testIgnoresTruncatedCompatibleBrandList {
     NSMutableData *data = [FtypBox(22, @"mif1", @[@"miaf"], NO) mutableCopy];
     [data appendBytes:"av" length:2];
-    XCTAssertEqual(Detect(data)->fileType, 0);
+    XCTAssertEqual([self detected:data]->fileType, 0);
 }
 
 /* A box claiming to be larger than the file is clamped to what is there. */
 - (void)testClampsOversizedBoxToAvailableBytes {
     NSData *data = FtypBox(4096, @"avif", @[@"mif1"], NO);
-    XCTAssertEqual(Detect(data)->fileType, FILETYPE_AVIF);
+    XCTAssertEqual([self detected:data]->fileType, FILETYPE_AVIF);
 }
 
 #pragma mark - JPEG XL
 
 - (void)testDetectsBareJxlCodestream {
     const unsigned char codestream[] = {0xff, 0x0a, 0x00, 0x11, 0x22, 0x33};
-    File *file = Detect([NSData dataWithBytes:codestream length:sizeof(codestream)]);
+    File *file = [self detected:[NSData dataWithBytes:codestream length:sizeof(codestream)]];
     XCTAssertEqual(file->fileType, FILETYPE_JXL);
 }
 
 - (void)testDetectsJxlContainer {
     const unsigned char container[] = {0x00, 0x00, 0x00, 0x0c, 'J', 'X', 'L', ' ',
                                        0x0d, 0x0a, 0x87, 0x0a, 0x00, 0x00, 0x00, 0x14};
-    File *file = Detect([NSData dataWithBytes:container length:sizeof(container)]);
+    File *file = [self detected:[NSData dataWithBytes:container length:sizeof(container)]];
     XCTAssertEqual(file->fileType, FILETYPE_JXL);
 }
 
@@ -150,16 +164,16 @@ static NSData *AvifFile(NSString *majorBrand, NSArray<NSString *> *compatibleBra
     // Right length and name, wrong signature bytes.
     const unsigned char notJxl[] = {0x00, 0x00, 0x00, 0x0c, 'J', 'X', 'L', ' ',
                                     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
-    XCTAssertEqual(Detect([NSData dataWithBytes:notJxl length:sizeof(notJxl)])->fileType, 0);
+    XCTAssertEqual([self detected:[NSData dataWithBytes:notJxl length:sizeof(notJxl)]]->fileType, 0);
 }
 
 #pragma mark - MIME types
 
 - (void)testReportsMimeTypesForNewFormats {
-    XCTAssertEqualObjects(Detect(AvifFile(@"avif", @[@"mif1"])).mimeType, @"image/avif");
+    XCTAssertEqualObjects([self detected:AvifFile(@"avif", @[@"mif1"])].mimeType, @"image/avif");
 
     const unsigned char codestream[] = {0xff, 0x0a, 0x00, 0x11, 0x22, 0x33};
-    XCTAssertEqualObjects(Detect([NSData dataWithBytes:codestream length:sizeof(codestream)]).mimeType, @"image/jxl");
+    XCTAssertEqualObjects([self detected:[NSData dataWithBytes:codestream length:sizeof(codestream)]].mimeType, @"image/jxl");
 }
 
 @end
