@@ -353,7 +353,7 @@ done
 # --- PNG: the tools left after Zopfli's removal ------------------------------
 
 echo
-echo "PNG — PngSuite through OxiPNG and PNGCrush"
+echo "PNG — PngSuite through OxiPNG, PNGCrush, PNGOUT and AdvPNG"
 
 # PngCrushWorker's own argument set. It turns -rem alla and -brute on
 # independently — the first from its strip setting, the second from the level or
@@ -362,12 +362,26 @@ echo "PNG — PngSuite through OxiPNG and PNGCrush"
 # stripping off. Each combination the worker can produce gets its own run, so a
 # regression confined to one of them cannot pass here.
 PNGCRUSH_MODES=("plain:" "strip:-rem alla" "brute:-brute" "strip-brute:-rem alla -brute")
-# A pngcrush run that declines one variant is tolerable, but if a mode declines
-# every valid PNG the loop below records nothing but skips, and the summary
-# ignores skips — so the harness would pass having never seen pngcrush produce a
-# result, while PngCrushWorker would decline every PNG in production.
-PNGCRUSH_VALID=0
+# A run that declines one variant is tolerable, but if a mode declines every
+# valid PNG the loop below records nothing but skips, and the summary ignores
+# skips — so the harness would pass having never seen the tool produce a result,
+# while the worker would decline every PNG in production.
+PNG_VALID=0
 PNGCRUSH_SUCCEEDED=""
+
+# PNGOUT and AdvPNG are what the shipped defaults actually enable for PNG —
+# PngCrush2Enabled is false there — so a broken or missing bundle copy of either
+# degrades every normal PNG run while the two tools above still pass.
+PNGOUT_AVAILABLE=1
+[ -x "$TOOLS/pngout" ] || { bad "pngout" "not in the bundle, though the shipped defaults enable PngoutWorker"; PNGOUT_AVAILABLE=0; }
+ADVPNG_AVAILABLE=1
+[ -x "$TOOLS/advpng" ] || { bad "advpng" "not in the bundle, though the shipped defaults enable AdvCompWorker"; ADVPNG_AVAILABLE=0; }
+
+# PngoutWorker's own argument set. -r and -v are on every run; -k1 appears only
+# when PngOutRemoveChunks is off, and -s1 only for a PNG the app calls large, so
+# each combination the worker can build gets its own run.
+PNGOUT_MODES=("plain:-r" "keep:-k1 -r" "large:-s1 -r" "keep-large:-s1 -k1 -r")
+PNGOUT_SUCCEEDED=""
 
 for want in "${PNGSUITE_WANTED[@]}"; do
     src=$(find "$CACHE_DIR/pngsuite" -name "$want" -type f 2>/dev/null | head -1)
@@ -376,7 +390,7 @@ for want in "${PNGSUITE_WANTED[@]}"; do
     if [ -z "$src" ]; then skip "pngsuite $want" "not in the corpus; reported as a fetch failure"; continue; fi
     corrupt=0
     case "$want" in x*) corrupt=1 ;; esac
-    [ "$corrupt" -eq 0 ] && PNGCRUSH_VALID=$((PNGCRUSH_VALID+1))
+    [ "$corrupt" -eq 0 ] && PNG_VALID=$((PNG_VALID+1))
     f=$(copy_in "$src")
 
     # OxiPngWorker's own argument set: the shipped level with metadata stripping,
@@ -427,18 +441,92 @@ for want in "${PNGSUITE_WANTED[@]}"; do
             skip "$label" "declined this variant, nothing written"
         fi
     done
+
+    # pngout, writing the PNG to stdout as the worker does — that is what forces
+    # the progress output onto stderr, which is where the worker reads the size
+    # it needs before it keeps anything.
+    for pomode in "${PNGOUT_MODES[@]}"; do
+        [ "$PNGOUT_AVAILABLE" -eq 1 ] || continue
+        potag="${pomode%%:*}"; poargs="${pomode#*:}"
+        out="$WORK_DIR/po-$potag-$want"
+        rm -f "$out"
+        po_out=$("$TOOLS/pngout" $poargs -v "$f" - 2>&1 >"$out")
+        rc=$?
+        label="pngout $potag $want"
+        if [ "$corrupt" -eq 1 ]; then
+            assert_corrupt_out "$label (corrupt)" "$rc" "$out"
+        elif [ "$rc" -ge 128 ]; then
+            bad "$label" "died with a signal (exit $rc)"
+        elif [ -s "$out" ]; then
+            assert_pass "$label" "$f" "$out"
+            # PngoutWorker takes the optimized size from the "Out:" line and
+            # keeps the temp file only once that parse succeeded, so losing the
+            # line would make ImageOptim discard every pngout result. It splits
+            # on CR as well as LF, since pngout writes its progress with CR.
+            if tr '\r' '\n' <<< "$po_out" | grep -Eq '^Out: *[0-9]+'; then
+                ok "pngout -v still prints the size line PngoutWorker parses for $potag $want"
+            else
+                bad "pngout size probe $potag $want" "no 'Out: <size>' line, so fileSizeOptimized would stay zero"
+            fi
+            case " $PNGOUT_SUCCEEDED " in
+                *" $potag "*) ;;
+                *) PNGOUT_SUCCEEDED="$PNGOUT_SUCCEEDED $potag" ;;
+            esac
+        elif [ "$rc" -eq 0 ]; then
+            bad "$label" "exited 0 without writing anything to stdout"
+        else
+            # pngout exits non-zero when it cannot improve on the input, and the
+            # worker keeps nothing in that case either.
+            skip "$label" "declined this variant, nothing written"
+        fi
+    done
+
+    # AdvCompWorker's own run: the shipped level, in place on a temp copy. It is
+    # scheduled only when PngOutRemoveChunks is on, which the shipped defaults
+    # have it be, and the level is the only thing that varies.
+    if [ "$ADVPNG_AVAILABLE" -eq 1 ]; then
+        out="$WORK_DIR/ad-$want"
+        cp "$f" "$out"
+        ad_out=$("$TOOLS/advpng" -4 -z -- "$out" 2>&1)
+        rc=$?
+        label="advpng $want"
+        if [ "$corrupt" -eq 1 ]; then
+            assert_corrupt "$label (corrupt)" "$rc" "$f" "$out"
+        elif [ "$rc" -ne 0 ]; then
+            bad "$label" "exited $rc on a valid PNG"
+        else
+            assert_pass "$label" "$f" "$out"
+            # The worker reads the optimized size from the second number of the
+            # report and hands it to tempCopyOfPath:size:, which drops the
+            # result when it does not match the file advpng actually wrote.
+            if /usr/bin/awk '$1 ~ /^[0-9]+$/ && $2 ~ /^[0-9]+$/ { found = 1 } END { exit found ? 0 : 1 }' <<< "$ad_out"; then
+                ok "advpng still prints the two sizes AdvCompWorker parses for $want"
+            else
+                bad "advpng size probe $want" "no '<original> <optimized>' line, so AdvCompWorker would keep nothing"
+            fi
+        fi
+    fi
 done
 
-# Declining every valid PNG is not a variant pngcrush dislikes, it is a mode that
+# Declining every valid PNG is not a variant the tool dislikes, it is a mode that
 # no longer works — one of the worker's mandatory flags gone, say.
-if [ "$PNGCRUSH_VALID" -gt 0 ]; then
+if [ "$PNG_VALID" -gt 0 ]; then
     for pcmode in "${PNGCRUSH_MODES[@]}"; do
         pctag="${pcmode%%:*}"
         case " $PNGCRUSH_SUCCEEDED " in
-            *" $pctag "*) ok "pngcrush $pctag produced a result for at least one of the $PNGCRUSH_VALID valid PNGs" ;;
-            *) bad "pngcrush $pctag" "declined all $PNGCRUSH_VALID valid PNGs, so PngCrushWorker would never keep an output" ;;
+            *" $pctag "*) ok "pngcrush $pctag produced a result for at least one of the $PNG_VALID valid PNGs" ;;
+            *) bad "pngcrush $pctag" "declined all $PNG_VALID valid PNGs, so PngCrushWorker would never keep an output" ;;
         esac
     done
+    if [ "$PNGOUT_AVAILABLE" -eq 1 ]; then
+        for pomode in "${PNGOUT_MODES[@]}"; do
+            potag="${pomode%%:*}"
+            case " $PNGOUT_SUCCEEDED " in
+                *" $potag "*) ok "pngout $potag produced a result for at least one of the $PNG_VALID valid PNGs" ;;
+                *) bad "pngout $potag" "declined all $PNG_VALID valid PNGs, so PngoutWorker would never keep an output" ;;
+            esac
+        done
+    fi
 fi
 
 # --- GIF: mainline gifsicle --------------------------------------------------
@@ -718,21 +806,81 @@ fi
 
 echo
 echo "JPEG XL — libjxl round-trips and the jxlinfo probe"
+
+# The bit depths the worker's regex finds in a jxlinfo -v listing, one per line.
+jxl_depths_of() { grep -Eo ', [0-9]+-bit|bits per sample: [0-9]+' <<< "$1" | grep -Eo '[0-9]+'; }
+
+# The box checks HasUnsupportedBoxes makes on that same listing: a box type the
+# round trip cannot rebuild, an ftyp holding more than the twelve bytes cjxl
+# writes back, or compressed metadata that is neither Exif nor XMP. Each of them
+# makes JXLWorker decline the file, so a listing that only has the right shape
+# still says nothing about whether the app would touch it.
+jxl_boxes_supported() { # <jxlinfo -v output>
+    /usr/bin/awk '
+        BEGIN { split("JXL |ftyp|jxlc|jxlp|jxll|Exif|xml |brob", t, "|"); for (i in t) supported[t[i]] = 1 }
+        function metadata_ok(t) { return t == "Exif" || t == "xml " }
+        /^  type: "..../                    { type = substr($0, 10, 4); if (!(type in supported)) bad = 1; next }
+        /^  contents size: [0-9]+$/         { if (type == "ftyp" && $3 > 12) bad = 1; next }
+        /^Uncompressed .... metadata:/      { if (!metadata_ok(substr($0, 14, 4))) bad = 1; next }
+        /^Brotli-compressed .... metadata:/ { if (!metadata_ok(substr($0, 19, 4))) bad = 1; next }
+        END { exit bad ? 1 : 0 }' <<< "$1"
+}
+
+# Everything canRoundTripThroughPngAtPath: requires before JXLWorker decodes a
+# file at all. The probes below check that jxlinfo still prints those lines in
+# the shape the worker parses; this decides whether the worker would take the
+# file on, which is what makes a round trip say anything about the app.
+jxl_worker_accepts() { # <jxlinfo -v output>
+    local info=$1 depths
+    grep -qF 'JPEG bitstream reconstruction data' <<< "$info" && return 1
+    grep -qF 'alpha premultiplied: 1' <<< "$info" && return 1
+    grep -Eq 'float \(|float, with exponent_bits_per_sample:' <<< "$info" && return 1
+    grep -qF 'Have animation: 0' <<< "$info" || return 1
+    grep -qF 'Have preview: 0' <<< "$info" || return 1
+    depths=$(jxl_depths_of "$info")
+    [ -n "$depths" ] || return 1
+    /usr/bin/awk '$1 > 16 { over = 1 } END { exit over ? 0 : 1 }' <<< "$depths" && return 1
+    jxl_boxes_supported "$info"
+}
+
+# How many of the files below JXLWorker would actually re-encode: the ones its
+# info guards accept and that djxl decodes to the single image PNG can hold.
+JXL_ELIGIBLE=0
+
 for src in "$CACHE_DIR"/jxl-*.jxl; do
     [ -f "$src" ] || continue
     n=$(basename "$src")
     f=$(copy_in "$src")
+
+    # canRoundTripThroughPngAtPath: refuses the file unless jxlinfo -v matches
+    # every one of the things checked below, on the stdout the worker pipes:
+    # output that moved to stderr, or a line that changed shape, would otherwise
+    # leave ImageOptim declining every JXL while the round trip still succeeds.
+    info="$("$TOOLS/jxlinfo" -v "$f" 2>/dev/null)"
+    accepts=0
+    jxl_worker_accepts "$info" && accepts=1
+
     # JXLWorker's own decode. --output_frames makes djxl write the frame as
     # <name>-0.png instead of <name>.png for some files, which is why the worker
     # looks for both; decoding into a directory of its own keeps the two apart.
     decdir="$WORK_DIR/jxl-dec-$n"
     rm -rf "$decdir"; mkdir -p "$decdir"
     if "$TOOLS/djxl" "$f" "$decdir/dec.png" --output_frames --output_extra_channels >/dev/null 2>&1; then
+        # HasAdditionalDecodedFiles counts what djxl left in the directory the
+        # same way and refuses anything past the first, because re-encoding one
+        # image would drop the other frames or the extra channels. Round-tripping
+        # it here would report a success for a file the app never processes.
+        decoded=$(find "$decdir" -maxdepth 1 -type f \( -name 'dec.png' -o -name 'dec-*.png' \) | wc -l | tr -d ' ')
         frame="$decdir/dec.png"
         [ -s "$frame" ] || frame="$decdir/dec-0.png"
-        if [ ! -s "$frame" ]; then
+        if [ "$decoded" -gt 1 ]; then
+            skip "jxl round-trip $n" "djxl wrote $decoded images, so HasAdditionalDecodedFiles declines the file"
+        elif [ ! -s "$frame" ]; then
             bad "jxl decode $n" "djxl wrote neither dec.png nor dec-0.png, so DecodedFramePath would find nothing"
         else
+            # Only now is this a file ImageOptim would re-encode: its info
+            # passed the worker's guards and djxl left one image behind.
+            [ "$accepts" -eq 1 ] && JXL_ELIGIBLE=$((JXL_ELIGIBLE+1))
             # -q 100 -e 9 is what Job builds by default, since it creates a
             # quality-100 worker unless lossy optimization is on; -q <JxlQuality>
             # is the lossy case, at the same effort.
@@ -750,19 +898,12 @@ for src in "$CACHE_DIR"/jxl-*.jxl; do
         bad "jxl decode $n" "djxl failed"
     fi
 
-    # canRoundTripThroughPngAtPath: refuses the file unless jxlinfo -v matches
-    # every one of these, so each is checked here, on the stdout the worker
-    # pipes: output that moved to stderr, or a line that changed shape, would
-    # otherwise leave ImageOptim declining every JXL while the round trip above
-    # still succeeds.
-    info="$("$TOOLS/jxlinfo" -v "$f" 2>/dev/null)"
-
     # The bit-depth regex, which also declines anything float or above 16 bits.
     # A bare "10-bit" without the comma the worker requires fails here too. The
     # float and depth limits are checked as well, because the round trip above
     # invokes djxl and cjxl directly: on a file the worker refuses it would keep
     # passing while ImageOptim never encodes such a JXL at all.
-    depths=$(grep -Eo ', [0-9]+-bit|bits per sample: [0-9]+' <<< "$info" | grep -Eo '[0-9]+')
+    depths=$(jxl_depths_of "$info")
     if [ -z "$depths" ]; then
         bad "jxl bit-depth probe $n" "jxlinfo output no longer matches the worker's regex"
     elif grep -Eq 'float \(|float, with exponent_bits_per_sample:' <<< "$info"; then
@@ -791,16 +932,30 @@ for src in "$CACHE_DIR"/jxl-*.jxl; do
     # A record cut short — the next type: arriving early, or the listing ending —
     # is a box the worker's three-line regex would not match either, so an
     # outstanding expectation counts as broken rather than being dropped.
-    elif /usr/bin/awk '
+    elif ! /usr/bin/awk '
             /^  type: "..../ { if (expect) broken = 1; expect = 2; next }
             expect == 2 { if ($0 !~ /^  size: [0-9]+$/) broken = 1; expect = 1; next }
             expect == 1 { if ($0 !~ /^  contents size: [0-9]+$/) broken = 1; expect = 0; next }
             END { exit (broken || expect) ? 1 : 0 }' <<< "$info"; then
-        ok "jxlinfo -v lists the $boxes boxes of $n the way JXLWorker reads them"
-    else
         bad "jxl box probe $n" "the box listing no longer matches the worker's regex, so every box would read as unsupported"
+    # A record the worker can read is still one it can refuse: HasUnsupportedBoxes
+    # also turns down unknown box types, an oversized ftyp and compressed metadata
+    # that is neither Exif nor XMP.
+    elif jxl_boxes_supported "$info"; then
+        ok "jxlinfo -v lists the $boxes boxes of $n the way JXLWorker reads them, and every one of them round-trips"
+    else
+        bad "jxl box probe $n" "a box here is one HasUnsupportedBoxes refuses, so JXLWorker declines the file and the round trip above tests something ImageOptim never encodes"
     fi
 done
+
+# Round trips run only on files the worker refuses — for a box it cannot rebuild,
+# a sample PNG cannot hold, or an extra channel the decode would drop — say
+# nothing about what ImageOptim does with a JXL.
+if [ "$JXL_ELIGIBLE" -gt 0 ]; then
+    ok "jxl round-tripped $JXL_ELIGIBLE file(s) JXLWorker would re-encode"
+else
+    bad "jxl worker eligibility" "no JXL here is one JXLWorker would re-encode, so the round trips above prove nothing about the app"
+fi
 
 # --- summary -----------------------------------------------------------------
 
