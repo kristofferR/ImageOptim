@@ -47,19 +47,21 @@ skip() { SKIP=$((SKIP+1)); printf '  skip  %s (%s)\n' "$1" "$2"; }
 # --- tools -------------------------------------------------------------------
 
 find_tools() {
-    local candidates=(
-        "$ROOT_DIR/imageoptim/build/Release/ImageOptim.app/Contents/Frameworks/ImageOptimGPL.framework/Versions/A/Resources"
-        "$ROOT_DIR/build/Release/ImageOptim.app/Contents/Frameworks/ImageOptimGPL.framework/Versions/A/Resources"
-    )
     # Every checkout shares one DerivedData directory, so ask Xcode where this
-    # project's products go rather than picking whichever ImageOptim.app is
-    # found there — a stale bundle from another checkout would let the corpus
-    # pass having exercised codecs this checkout never built.
+    # project's products go and try that first — a stale bundle from another
+    # checkout, whether in DerivedData or left behind in the tree, would let the
+    # corpus pass having exercised codecs this checkout never built. The in-tree
+    # paths are only a fallback for when xcodebuild cannot answer.
+    local candidates=()
     local built
     built="$(xcodebuild -project "$ROOT_DIR/imageoptim/ImageOptim.xcodeproj" \
         -target ImageOptim -configuration Release -showBuildSettings 2>/dev/null |
         /usr/bin/awk '/^ *BUILT_PRODUCTS_DIR = /{sub(/^ *BUILT_PRODUCTS_DIR = /, ""); print; exit}')"
     [ -n "$built" ] && candidates+=("$built/ImageOptim.app/Contents/Frameworks/ImageOptimGPL.framework/Versions/A/Resources")
+    candidates+=(
+        "$ROOT_DIR/imageoptim/build/Release/ImageOptim.app/Contents/Frameworks/ImageOptimGPL.framework/Versions/A/Resources"
+        "$ROOT_DIR/build/Release/ImageOptim.app/Contents/Frameworks/ImageOptimGPL.framework/Versions/A/Resources"
+    )
 
     local dir
     for dir in "${candidates[@]}"; do
@@ -348,9 +350,13 @@ done
 echo
 echo "PNG — PngSuite through OxiPNG and PNGCrush"
 
-# PngCrushWorker's own argument set; the second entry adds the flags its strip
-# and brute settings turn on.
-PNGCRUSH_MODES=("plain:" "strip-brute:-rem alla -brute")
+# PngCrushWorker's own argument set. It turns -rem alla and -brute on
+# independently — the first from its strip setting, the second from the level or
+# from the input being small — so at the shipped level 4 a stripped PNG of 2 KiB
+# or more runs without -brute, while a higher level can brute-force with
+# stripping off. Each combination the worker can produce gets its own run, so a
+# regression confined to one of them cannot pass here.
+PNGCRUSH_MODES=("plain:" "strip:-rem alla" "brute:-brute" "strip-brute:-rem alla -brute")
 # A pngcrush run that declines one variant is tolerable, but if a mode declines
 # every valid PNG the loop below records nothing but skips, and the summary
 # ignores skips — so the harness would pass having never seen pngcrush produce a
@@ -440,6 +446,20 @@ echo "GIF — mainline gifsicle, including the --lossy path from giflossy"
 # ImageOptim fail every GIF while a bare -O3 run still succeeded.
 GIF_WORKER_OPTS="-O3 --careful --no-comments --no-names --same-delay --same-loopcount --no-warnings"
 
+# GifsicleWorker derives --lossy from the configured quality and the input size
+# rather than passing a fixed value, so the corpus derives it the same way. A
+# hard-coded number would leave the argument ImageOptim actually runs — 6, 22 or
+# 43 at the shipped quality of 80, depending on the size — unexercised.
+GIF_QUALITY=80
+gif_lossy_for() { # <file> -> the --lossy value GifsicleWorker would pass for it
+    /usr/bin/awk -v q="$GIF_QUALITY" -v size="$(size_of "$1")" 'BEGIN {
+        loss = int((100 - q) ^ 1.8 / 5.0)
+        if (size < 10 * 1024)         loss = 1 + int(loss / 8)   # isSmall: spare GIF icons
+        else if (size <= 1024 * 1024) loss = 1 + int(loss / 2)   # !isLarge: spare GIF images
+        print loss
+    }'
+}
+
 # The frame delays and loop count gifsicle reports, which --same-delay and
 # --same-loopcount are there to preserve.
 timing_of() {
@@ -451,7 +471,8 @@ for src in "$CACHE_DIR"/gif-*.gif; do
     [ -f "$src" ] || continue
     n=$(basename "$src")
     f=$(copy_in "$src")
-    for mode in "plain:--no-interlace" "interlaced:--interlace" "lossy:--no-interlace --lossy=30"; do
+    lossy=$(gif_lossy_for "$f")
+    for mode in "plain:--no-interlace" "interlaced:--interlace" "lossy:--no-interlace --lossy=$lossy"; do
         tag="${mode%%:*}"; opts="${mode#*:}"
         label="gifsicle $tag $n"
         outfile="$WORK_DIR/gs-$tag-$n"
