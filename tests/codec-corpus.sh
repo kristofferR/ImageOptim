@@ -470,10 +470,20 @@ else
     bad "jpegoptim lossy retention" "no result cleared JpegoptimWorker's 5% minimum-savings gate"
 fi
 
-# --- PNG: the tools left after Zopfli's removal ------------------------------
+# --- PNG: lossy pngquant and the tools left after Zopfli's removal -----------
 
 echo
-echo "PNG — PngSuite through OxiPNG, PNGCrush, PNGOUT and AdvPNG"
+echo "PNG — PngSuite through pngquant, OxiPNG, PNGCrush, PNGOUT and AdvPNG"
+
+# PngquantWorker runs first when lossy minification is enabled. At the shipped
+# level 4, its MIN(3, 7 - level) calculation produces -s3; the quality default
+# is 80. These are those production arguments, including the stdin/stdout path.
+# Exit 98/99 are deliberate pngquant refusals that the worker accepts before
+# Job applies its final gate: only a non-empty result smaller than the input is
+# retained.
+PNGQUANT_AVAILABLE=1
+[ -x "$TOOLS/pngquant" ] || { bad "pngquant" "not in the bundle, though PngquantWorker schedules it for lossy PNGs"; PNGQUANT_AVAILABLE=0; }
+PNGQUANT_RETAINED=0
 
 # PngCrushWorker's own argument set. It turns -rem alla and -brute on
 # independently — the first from its strip setting, the second from the level or
@@ -512,10 +522,32 @@ for want in "${PNGSUITE_WANTED[@]}"; do
     case "$want" in x*) corrupt=1 ;; esac
     [ "$corrupt" -eq 0 ] && PNG_VALID=$((PNG_VALID+1))
     f=$(copy_in "$src")
-    # Every PNG tool here is a lossless pass, so each output is compared against
-    # the pixels of this file. A corrupt input has none worth preserving.
+    # The lossless PNG passes below are compared against the pixels of this file.
+    # A corrupt input has none worth preserving.
     pixels=
     [ "$corrupt" -eq 0 ] && pixels=$(pixels_of "$f")
+
+    if [ "$corrupt" -eq 0 ] && [ "$PNGQUANT_AVAILABLE" -eq 1 ]; then
+        out="$WORK_DIR/pq-$want"
+        rm -f "$out"
+        "$TOOLS/pngquant" 256 --skip-if-larger -s3 --quality 80-100 - <"$f" >"$out" 2>/dev/null
+        rc=$?
+        label="pngquant $want"
+        if [ "$rc" -ge 128 ]; then
+            bad "$label" "died with a signal (exit $rc)"
+        elif { [ "$rc" -eq 0 ] || [ "$rc" -eq 98 ] || [ "$rc" -eq 99 ]; } && [ -s "$out" ]; then
+            assert_pass "$label" "$f" "$out"
+            if [ "$(size_of "$out")" -lt "$(size_of "$f")" ]; then
+                PNGQUANT_RETAINED=$((PNGQUANT_RETAINED+1))
+            fi
+        elif [ "$rc" -eq 98 ] || [ "$rc" -eq 99 ]; then
+            skip "$label" "declined this variant (exit $rc), nothing the worker would keep"
+        elif [ "$rc" -eq 0 ]; then
+            bad "$label" "exited 0 without writing anything to stdout"
+        else
+            bad "$label" "exited $rc on a valid PNG"
+        fi
+    fi
 
     # OxiPngWorker's own argument set: the shipped level with metadata stripping,
     # written to a separate path rather than in place, as the worker does.
@@ -656,6 +688,16 @@ for want in "${PNGSUITE_WANTED[@]}"; do
         fi
     fi
 done
+
+# A decodable output is not enough to exercise the production path: Job retains
+# pngquant's lossy result only when it is strictly smaller than the current PNG.
+if [ "$PNGQUANT_AVAILABLE" -eq 1 ]; then
+    if [ "$PNGQUANT_RETAINED" -gt 0 ]; then
+        ok "pngquant produced $PNGQUANT_RETAINED result(s) PngquantWorker would retain"
+    else
+        bad "pngquant retention" "no result cleared Job's minimum-savings gate"
+    fi
+fi
 
 # Declining every valid PNG is not a variant the tool dislikes, it is a mode that
 # no longer works — one of the worker's mandatory flags gone, say.
