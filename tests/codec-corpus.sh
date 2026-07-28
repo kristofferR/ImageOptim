@@ -288,6 +288,61 @@ assert_same_pixels() {
     fi
 }
 
+# Gifsicle's unoptimized frames are the complete images a viewer renders, not
+# the rectangular patches an optimized animation stores. Hash each one after
+# decoding so palette reordering is harmless but any visible pixel change is
+# caught.
+gif_rendered_frames_of() {
+    local src=$1 frame_dir frame_copy frame frame_pixels
+    local found=0 digests=
+    frame_dir="$WORK_DIR/gif-frames-$(basename "$src")"
+    frame_copy="$frame_dir/input.gif"
+    rm -rf "$frame_dir"
+    mkdir -p "$frame_dir"
+    cp "$src" "$frame_copy" || return 1
+    "$TOOLS/gifsicle" --explode --unoptimize "$frame_copy" >/dev/null 2>&1 || return 1
+    for frame in "$frame_copy".[0-9][0-9][0-9]; do
+        [ -f "$frame" ] || continue
+        frame_pixels=$(pixels_of "$frame")
+        [ -n "$frame_pixels" ] || return 1
+        digests="${digests}${frame_pixels}"$'\n'
+        found=1
+    done
+    [ "$found" -eq 1 ] || return 1
+    printf '%s' "$digests"
+}
+
+# SVGO's output has to preserve the rendered image, not merely remain XML.
+# Render both documents through the host SVG decoder at a fixed size. The lite
+# mode is byte-exact; the lossy mode allows tiny antialiasing/rounding changes
+# but rejects a shifted colour or a missing graphical element.
+svg_rasterize() {
+    local src=$1 out=$2
+    rm -f "$out"
+    /usr/bin/sips -s format bmp -z 256 256 "$src" --out "$out" >/dev/null 2>&1 &&
+        [ -s "$out" ]
+}
+
+svg_visual_difference() {
+    local before=$1 after=$2
+    /usr/bin/paste \
+        <(/usr/bin/hexdump -v -e '1/1 "%u\n"' "$before") \
+        <(/usr/bin/hexdump -v -e '1/1 "%u\n"' "$after") |
+        /usr/bin/awk '{
+            difference = $1 - $2
+            if (difference < 0) difference = -difference
+            total += difference
+            if (difference > 8) large++
+            bytes++
+        }
+        END {
+            mean = bytes ? total / bytes : 999
+            fraction = bytes ? large / bytes : 1
+            printf "mean byte error %.3f; %.3f%% differ by more than 8", mean, fraction * 100
+            exit !(bytes && mean <= 1 && fraction <= 0.001)
+        }'
+}
+
 # The worker contract: it replaces the file only when the result is smaller, so
 # a pass that grows a file is discarded, not wrong. What must never happen is
 # corrupt output or changed dimensions.
@@ -531,7 +586,16 @@ for want in "${PNGSUITE_WANTED[@]}"; do
         po_size_line=0
         tr '\r' '\n' <<< "$po_out" | grep -Eq '^Out: *[0-9]+' && po_size_line=1
         if [ "$corrupt" -eq 1 ]; then
-            assert_corrupt_out "$label (corrupt)" "$rc" "$out"
+            # Status 2 is pngout's accepted early exit: with an Out: size,
+            # PngoutWorker keeps the file just as it does for status 0. Validate
+            # that output instead of counting every non-zero status as refusal.
+            if { [ "$rc" -eq 0 ] || [ "$rc" -eq 2 ]; } && [ "$po_size_line" -eq 1 ]; then
+                assert_corrupt_out "$label (corrupt)" 0 "$out"
+            elif [ "$rc" -ge 128 ]; then
+                bad "$label (corrupt)" "died with a signal (exit $rc)"
+            else
+                ok "$label (corrupt input refused; nothing PngoutWorker would keep)"
+            fi
         elif [ "$rc" -ge 128 ]; then
             bad "$label" "died with a signal (exit $rc)"
         # The worker discards every status but 0 and pngout's early-exit 2, and
@@ -649,6 +713,10 @@ for src in "$CACHE_DIR"/gif-*.gif; do
     [ -f "$src" ] || continue
     n=$(basename "$src")
     f=$(copy_in "$src")
+    rendered_frames=$(gif_rendered_frames_of "$f")
+    if [ -z "$rendered_frames" ]; then
+        bad "gifsicle input frames $n" "could not decode every rendered frame"
+    fi
     lossy=$(gif_lossy_for "$f")
     for mode in "plain:--no-interlace" "interlaced:--interlace" "lossy:--no-interlace --lossy=$lossy"; do
         tag="${mode%%:*}"; opts="${mode#*:}"
@@ -659,6 +727,16 @@ for src in "$CACHE_DIR"/gif-*.gif; do
                 assert_pass "$label" "$f" "$outfile"
             else
                 bad "$label" "output is not a readable GIF"
+            fi
+            if [ "$tag" != lossy ] && [ -n "$rendered_frames" ]; then
+                output_frames=$(gif_rendered_frames_of "$outfile")
+                if [ -z "$output_frames" ]; then
+                    bad "$label frames" "could not decode every rendered output frame"
+                elif [ "$rendered_frames" != "$output_frames" ]; then
+                    bad "$label frames" "a lossless pass changed rendered frame pixels"
+                else
+                    ok "$label kept every rendered frame pixel"
+                fi
             fi
         else
             bad "$label" "gifsicle failed (are --lossy and the worker's options present?)"
@@ -714,6 +792,13 @@ else
         [ -f "$src" ] || continue
         n=$(basename "$src")
         f=$(copy_in "$src")
+        rendered_input="$WORK_DIR/sv-render-input-$n.bmp"
+        input_rendered=0
+        if svg_rasterize "$f" "$rendered_input"; then
+            input_rendered=1
+        else
+            bad "svgo input render $n" "the input could not be rasterized"
+        fi
         # The argument SvgoWorker passes: 0 for the default plugin list, 1 once
         # LossyEnabled turns on cleanupIds and the rest of the lossy plugins.
         for svmode in "lite:0" "lossy:1"; do
@@ -732,6 +817,22 @@ else
                     bad "svgo $svtag $n" "output parses but has no <svg> element"
                 else
                     ok "svgo $svtag $n parses as XML"
+                fi
+                if [ "$input_rendered" -eq 1 ]; then
+                    rendered_output="$WORK_DIR/sv-render-$svtag-$n.bmp"
+                    if ! svg_rasterize "$out" "$rendered_output"; then
+                        bad "svgo $svtag $n render" "output could not be rasterized"
+                    elif [ "$svtag" = lite ]; then
+                        if cmp -s "$rendered_input" "$rendered_output"; then
+                            ok "svgo $svtag $n preserved the exact rendered image"
+                        else
+                            bad "svgo $svtag $n render" "the rendered image changed"
+                        fi
+                    elif visual_difference=$(svg_visual_difference "$rendered_input" "$rendered_output"); then
+                        ok "svgo $svtag $n preserved the rendered image ($visual_difference)"
+                    else
+                        bad "svgo $svtag $n render" "visual difference is too large ($visual_difference)"
+                    fi
                 fi
                 if [ "$sa" -gt "$sb" ]; then
                     ok "svgo $svtag $n (${sb} -> ${sa} bytes; larger, so the worker discards it)"
@@ -951,8 +1052,13 @@ for src in "$CACHE_DIR"/jxl-*.jxl; do
     # output that moved to stderr, or a line that changed shape, would otherwise
     # leave ImageOptim declining every JXL while the round trip still succeeds.
     info="$("$TOOLS/jxlinfo" -v "$f" 2>/dev/null)"
+    info_rc=$?
     accepts=0
-    jxl_worker_accepts "$info" && accepts=1
+    if [ "$info_rc" -ne 0 ]; then
+        bad "jxlinfo $n" "exited $info_rc, so JXLWorker would decline the file"
+    elif jxl_worker_accepts "$info"; then
+        accepts=1
+    fi
 
     # JXLWorker's own decode. --output_frames makes djxl write the frame as
     # <name>-0.png instead of <name>.png for some files, which is why the worker
@@ -964,7 +1070,7 @@ for src in "$CACHE_DIR"/jxl-*.jxl; do
         # same way and refuses anything past the first, because re-encoding one
         # image would drop the other frames or the extra channels. Round-tripping
         # it here would report a success for a file the app never processes.
-        decoded=$(find "$decdir" -maxdepth 1 -type f \( -name 'dec.png' -o -name 'dec-*.png' \) | wc -l | tr -d ' ')
+        decoded=$(find "$decdir" -type f \( -name 'dec.png' -o -name 'dec-*.png' \) | wc -l | tr -d ' ')
         frame="$decdir/dec.png"
         [ -s "$frame" ] || frame="$decdir/dec-0.png"
         if [ "$decoded" -gt 1 ]; then
