@@ -116,9 +116,11 @@ static NSData *AvifFile(NSString *majorBrand, NSArray<NSString *> *compatibleBra
     XCTAssertEqual(Detect(AvifFile(@"heic", @[@"mif1", @"heic"]))->fileType, 0);
 }
 
-/* A brand list that stops mid-brand must not be read past its end. */
+/* A brand list that stops mid-brand must not be read past its end. The declared
+   size covers the two stray bytes — 16 header + "miaf" + 2 — so they are inside
+   the box and the parser has to stop at the last whole brand on its own. */
 - (void)testIgnoresTruncatedCompatibleBrandList {
-    NSMutableData *data = [AvifFile(@"mif1", @[@"miaf"]) mutableCopy];
+    NSMutableData *data = [FtypBox(22, @"mif1", @[@"miaf"], NO) mutableCopy];
     [data appendBytes:"av" length:2];
     XCTAssertEqual(Detect(data)->fileType, 0);
 }

@@ -51,8 +51,10 @@ find_tools() {
         "$ROOT_DIR/imageoptim/build/Release/ImageOptim.app/Contents/Frameworks/ImageOptimGPL.framework/Versions/A/Resources"
         "$ROOT_DIR/build/Release/ImageOptim.app/Contents/Frameworks/ImageOptimGPL.framework/Versions/A/Resources"
     )
+    # Resources sits eleven levels below DerivedData in Xcode's default layout:
+    # <project-hash>/Build/Products/Release/…/Versions/A/Resources.
     local derived
-    derived="$(find "$HOME/Library/Developer/Xcode/DerivedData" -maxdepth 6 \
+    derived="$(find "$HOME/Library/Developer/Xcode/DerivedData" -maxdepth 11 \
         -path '*/Build/Products/Release/ImageOptim.app/Contents/Frameworks/ImageOptimGPL.framework/Versions/A/Resources' \
         -type d 2>/dev/null | head -1)"
     [ -n "$derived" ] && candidates+=("$derived")
@@ -103,6 +105,9 @@ CORPUS=(
 # PngSuite carries the awkward PNGs: interlaced, 16-bit, palette+tRNS, and a
 # set of deliberately corrupt files.
 PNGSUITE_URL="http://www.schaik.com/pngsuite/PngSuite-2017jul19.tgz"
+# schaik.com serves no HTTPS, so the archive is authenticated by digest before
+# anything is unpacked from it.
+PNGSUITE_SHA256="0294b244c95a8342c01b00010cf34abdcabc7c6a34fd0fe1bd963917537bfdc8"
 PNGSUITE_WANTED=(
     basn0g01.png  # 1-bit grayscale
     basn0g16.png  # 16-bit grayscale
@@ -120,16 +125,20 @@ PNGSUITE_WANTED=(
     xcrn0g04.png  # corrupt: broken CRC
 )
 
+# Names of the inputs that could not be fetched; each one is reported as a
+# failure below, so a codec is never left unexercised without saying so.
+MISSING=()
+
 fetch_corpus() {
+    local entry name url
     mkdir -p "$CACHE_DIR"
-    local entry name url missing=0
     for entry in "${CORPUS[@]}"; do
         name="${entry%%|*}"; url="${entry#*|}"
         [ -s "$CACHE_DIR/$name" ] && continue
         if ! curl -sL --fail --max-time 60 -o "$CACHE_DIR/$name.part" "$url"; then
             rm -f "$CACHE_DIR/$name.part"
             echo "  could not fetch $name" >&2
-            missing=$((missing+1))
+            MISSING+=("$name")
             continue
         fi
         mv "$CACHE_DIR/$name.part" "$CACHE_DIR/$name"
@@ -137,20 +146,27 @@ fetch_corpus() {
 
     if [ ! -s "$CACHE_DIR/pngsuite/basn2c08.png" ]; then
         mkdir -p "$CACHE_DIR/pngsuite"
-        if curl -sL --fail --max-time 120 -o "$WORK_DIR/pngsuite.tgz" "$PNGSUITE_URL"; then
-            tar xzf "$WORK_DIR/pngsuite.tgz" -C "$CACHE_DIR/pngsuite" 2>/dev/null
-        else
+        if ! curl -sL --fail --max-time 120 -o "$WORK_DIR/pngsuite.tgz" "$PNGSUITE_URL"; then
             echo "  could not fetch PngSuite" >&2
-            missing=$((missing+1))
+            MISSING+=("PngSuite")
+        elif [ "$(/usr/bin/shasum -a 256 "$WORK_DIR/pngsuite.tgz" | cut -d' ' -f1)" != "$PNGSUITE_SHA256" ]; then
+            echo "  PngSuite archive does not match its pinned checksum; not extracting" >&2
+            MISSING+=("PngSuite")
+        else
+            tar xzf "$WORK_DIR/pngsuite.tgz" -C "$CACHE_DIR/pngsuite" 2>/dev/null
         fi
     fi
-    return $missing
 }
 
 mkdir -p "$WORK_DIR"
 echo
 echo "fetching corpus into $CACHE_DIR"
 fetch_corpus
+if [ "${#MISSING[@]}" -gt 0 ]; then
+    for name in "${MISSING[@]}"; do
+        bad "fetch $name" "download failed, so its codec goes unexercised"
+    done
+fi
 fetched=$(find "$CACHE_DIR" -type f \( -name '*.png' -o -name '*.avif' -o -name '*.avifs' -o -name '*.jxl' -o -name '*.gif' -o -name '*.jpg' -o -name '*.svg' \) 2>/dev/null | wc -l | tr -d ' ')
 echo "corpus files available: $fetched"
 if [ "$fetched" -eq 0 ]; then
@@ -179,7 +195,14 @@ assert_pass() {
     local sb sa db da
     sb=$(size_of "$before"); sa=$(size_of "$after")
     db=$(dimensions_of "$before"); da=$(dimensions_of "$after")
-    if [ -n "$db" ] && [ -n "$da" ] && [ "$db" != "$da" ]; then
+    if [ -z "$db" ]; then
+        # sips has no decoder for this format on this host — AVIF and JPEG XL on
+        # older macOS. Say so rather than let the invariant pass unchecked.
+        skip "$name decodes" "sips cannot read this format here"
+    elif [ -z "$da" ]; then
+        bad "$name" "output does not decode, though the input did"
+        return
+    elif [ "$db" != "$da" ]; then
         bad "$name" "dimensions changed: [$db] -> [$da]"
         return
     fi
@@ -250,10 +273,18 @@ for want in "${PNGSUITE_WANTED[@]}"; do
 
     [ "$corrupt" -eq 1 ] && continue
     cp "$f" "$WORK_DIR/pc-$want"
-    if "$TOOLS/pngcrush" -q -ow "$WORK_DIR/pc-$want" >/dev/null 2>&1; then
+    "$TOOLS/pngcrush" -q -ow "$WORK_DIR/pc-$want" >/dev/null 2>&1
+    rc=$?
+    if [ "$rc" -eq 0 ]; then
         assert_pass "pngcrush $want" "$f" "$WORK_DIR/pc-$want"
+    elif [ "$rc" -ge 128 ]; then
+        bad "pngcrush $want" "died with a signal (exit $rc)"
+    elif cmp -s "$f" "$WORK_DIR/pc-$want"; then
+        # Only a clean refusal that leaves the file alone is tolerable here; a
+        # crash, or a failure that still rewrote the file, is a real failure.
+        skip "pngcrush $want" "declined this variant, file untouched"
     else
-        skip "pngcrush $want" "declined this variant"
+        bad "pngcrush $want" "exited $rc on a valid PNG and modified the file"
     fi
 done
 
@@ -279,14 +310,17 @@ for src in "$CACHE_DIR"/gif-*.gif; do
             bad "$label" "gifsicle failed (is --lossy present?)"
         fi
     done
+    # Both outputs must keep every frame — --lossy is the path that changed.
     fin=$("$TOOLS/gifsicle" --info "$f" 2>/dev/null | grep -c 'image #')
-    fout=$("$TOOLS/gifsicle" --info "$WORK_DIR/gs-plain-$n" 2>/dev/null | grep -c 'image #')
     if [ "$fin" -gt 1 ]; then
-        if [ "$fin" = "$fout" ]; then
-            ok "gifsicle preserved all $fin frames of $n"
-        else
-            bad "gifsicle frames $n" "frame count changed: $fin -> $fout"
-        fi
+        for tag in plain lossy; do
+            fout=$("$TOOLS/gifsicle" --info "$WORK_DIR/gs-$tag-$n" 2>/dev/null | grep -c 'image #')
+            if [ "$fin" = "$fout" ]; then
+                ok "gifsicle $tag preserved all $fin frames of $n"
+            else
+                bad "gifsicle frames $tag $n" "frame count changed: $fin -> $fout"
+            fi
+        done
     fi
 done
 
@@ -388,8 +422,9 @@ for src in "$CACHE_DIR"/jxl-*.jxl; do
     fi
 
     # JXLWorker reads bit depth out of jxlinfo -v with a regex and declines
-    # anything float or above 16 bits.
-    if "$TOOLS/jxlinfo" -v "$f" 2>&1 | grep -Eq '[0-9]+-bit|bits per sample: [0-9]+'; then
+    # anything float or above 16 bits. This is that regex, so a bare "10-bit"
+    # without the comma the worker requires fails here too.
+    if "$TOOLS/jxlinfo" -v "$f" 2>&1 | grep -Eq ', [0-9]+-bit|bits per sample: [0-9]+'; then
         ok "jxlinfo -v reports bit depth for $n in the form JXLWorker parses"
     else
         bad "jxl bit-depth probe $n" "jxlinfo output no longer matches the worker's regex"
