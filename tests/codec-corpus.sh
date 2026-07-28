@@ -393,7 +393,9 @@ for want in "${PNGSUITE_WANTED[@]}"; do
         rc=$?
         label="pngcrush $pctag $want"
         if [ "$corrupt" -eq 1 ]; then
-            assert_corrupt_out "$label (corrupt)" "$rc" "$out"
+            # PngCrushWorker keeps the output only above 70 bytes, because
+            # pngcrush's failure mode is a header-only PNG of exactly that size.
+            assert_corrupt_out "$label (corrupt)" "$rc" "$out" 70
         elif [ "$rc" -ge 128 ]; then
             bad "$label" "died with a signal (exit $rc)"
         elif [ "$rc" -eq 0 ]; then
@@ -628,15 +630,31 @@ for src in "$CACHE_DIR"/*.avifs; do
     fi
 done
 
-# The gain-map probe AVIFWorker relies on is a literal string match, and the
-# worker pipes only stdout, so stderr is discarded here too: output that moved
-# to stderr would make the worker decline every file.
+# AVIFWorker requires two literal strings in avifdec --info, and the worker
+# pipes only stdout, so stderr is discarded here too: output that moved to
+# stderr, or either line changing shape, would make the worker decline every
+# file. The transformations line only reads "None" for a file carrying no
+# clap/irot/imir/pasp box, and every fox.* sample carries a pasp, so that
+# literal is probed on an AVIF avifenc wrote instead.
 probe=$(find "$CACHE_DIR" -name 'avif-8bpc-yuv420.avif' | head -1)
 if [ -n "$probe" ]; then
     if "$TOOLS/avifdec" --info "$probe" 2>/dev/null | grep -q ' \* Gain map       : Absent'; then
         ok "avifdec --info still prints the exact gain-map line AVIFWorker matches"
     else
         bad "avif gain-map probe" "that line changed — AVIFWorker would skip every file"
+    fi
+
+    plain="$WORK_DIR/avif-plain.avif"
+    rm -f "$plain"
+    if "$TOOLS/avifdec" "$probe" "$WORK_DIR/avif-plain.png" >/dev/null 2>&1 &&
+        "$TOOLS/avifenc" --lossless -s 4 "$WORK_DIR/avif-plain.png" "$plain" >/dev/null 2>&1; then
+        if "$TOOLS/avifdec" --info "$plain" 2>/dev/null | grep -q ' \* Transformations: None'; then
+            ok "avifdec --info still prints the exact transformations line AVIFWorker matches"
+        else
+            bad "avif transformations probe" "that line changed — AVIFWorker would skip every file"
+        fi
+    else
+        bad "avif transformations probe" "could not write a transformation-free AVIF to probe"
     fi
 fi
 
@@ -684,11 +702,19 @@ for src in "$CACHE_DIR"/jxl-*.jxl; do
     info="$("$TOOLS/jxlinfo" -v "$f" 2>/dev/null)"
 
     # The bit-depth regex, which also declines anything float or above 16 bits.
-    # A bare "10-bit" without the comma the worker requires fails here too.
-    if grep -Eq ', [0-9]+-bit|bits per sample: [0-9]+' <<< "$info"; then
-        ok "jxlinfo -v reports bit depth for $n in the form JXLWorker parses"
-    else
+    # A bare "10-bit" without the comma the worker requires fails here too. The
+    # float and depth limits are checked as well, because the round trip above
+    # invokes djxl and cjxl directly: on a file the worker refuses it would keep
+    # passing while ImageOptim never encodes such a JXL at all.
+    depths=$(grep -Eo ', [0-9]+-bit|bits per sample: [0-9]+' <<< "$info" | grep -Eo '[0-9]+')
+    if [ -z "$depths" ]; then
         bad "jxl bit-depth probe $n" "jxlinfo output no longer matches the worker's regex"
+    elif grep -Eq 'float \(|float, with exponent_bits_per_sample:' <<< "$info"; then
+        bad "jxl bit-depth probe $n" "jxlinfo reports float samples, which JXLWorker refuses, so the round trip above tests a file ImageOptim would never encode"
+    elif /usr/bin/awk '$1 > 16 { over = 1 } END { exit over ? 0 : 1 }' <<< "$depths"; then
+        bad "jxl bit-depth probe $n" "jxlinfo reports a depth above 16 bits, which JXLWorker refuses, so the round trip above tests a file ImageOptim would never encode"
+    else
+        ok "jxlinfo -v reports bit depth for $n in the form JXLWorker parses"
     fi
 
     # The animation and preview flags, which the worker requires literally.
@@ -706,11 +732,14 @@ for src in "$CACHE_DIR"/jxl-*.jxl; do
     boxes=$(grep -c '^  type: "' <<< "$info")
     if [ "$boxes" -eq 0 ]; then
         skip "jxl box probe $n" "this file is a bare codestream"
+    # A record cut short — the next type: arriving early, or the listing ending —
+    # is a box the worker's three-line regex would not match either, so an
+    # outstanding expectation counts as broken rather than being dropped.
     elif /usr/bin/awk '
-            /^  type: "..../ { expect = 2; next }
+            /^  type: "..../ { if (expect) broken = 1; expect = 2; next }
             expect == 2 { if ($0 !~ /^  size: [0-9]+$/) broken = 1; expect = 1; next }
             expect == 1 { if ($0 !~ /^  contents size: [0-9]+$/) broken = 1; expect = 0; next }
-            END { exit broken ? 1 : 0 }' <<< "$info"; then
+            END { exit (broken || expect) ? 1 : 0 }' <<< "$info"; then
         ok "jxlinfo -v lists the $boxes boxes of $n the way JXLWorker reads them"
     else
         bad "jxl box probe $n" "the box listing no longer matches the worker's regex, so every box would read as unsupported"
