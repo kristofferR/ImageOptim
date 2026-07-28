@@ -125,8 +125,9 @@ PNGSUITE_WANTED=(
     xcrn0g04.png  # corrupt: broken CRC
 )
 
-# Names of the inputs that could not be fetched; each one is reported as a
-# failure below, so a codec is never left unexercised without saying so.
+# Names of the inputs that could not be fetched or unpacked; each one is
+# reported as a failure below, so a codec is never left unexercised without
+# saying so.
 MISSING=()
 
 fetch_corpus() {
@@ -152,8 +153,11 @@ fetch_corpus() {
         elif [ "$(/usr/bin/shasum -a 256 "$WORK_DIR/pngsuite.tgz" | cut -d' ' -f1)" != "$PNGSUITE_SHA256" ]; then
             echo "  PngSuite archive does not match its pinned checksum; not extracting" >&2
             MISSING+=("PngSuite")
-        else
-            tar xzf "$WORK_DIR/pngsuite.tgz" -C "$CACHE_DIR/pngsuite" 2>/dev/null
+        elif ! tar xzf "$WORK_DIR/pngsuite.tgz" -C "$CACHE_DIR/pngsuite" 2>/dev/null; then
+            # Without this the PNG cases below would all report as skips and the
+            # harness could pass having exercised neither PNG codec.
+            echo "  could not unpack PngSuite" >&2
+            MISSING+=("PngSuite")
         fi
     fi
 }
@@ -164,7 +168,7 @@ echo "fetching corpus into $CACHE_DIR"
 fetch_corpus
 if [ "${#MISSING[@]}" -gt 0 ]; then
     for name in "${MISSING[@]}"; do
-        bad "fetch $name" "download failed, so its codec goes unexercised"
+        bad "fetch $name" "unavailable, so its codec goes unexercised"
     done
 fi
 fetched=$(find "$CACHE_DIR" -type f \( -name '*.png' -o -name '*.avif' -o -name '*.avifs' -o -name '*.jxl' -o -name '*.gif' -o -name '*.jpg' -o -name '*.svg' \) 2>/dev/null | wc -l | tr -d ' ')
@@ -213,6 +217,30 @@ assert_pass() {
     fi
 }
 
+# Corrupt input must be refused cleanly: a non-zero exit is fine, a signal is
+# not, the file must not be replaced with garbage, and a tool that claims
+# success has to leave behind something that still decodes.
+assert_corrupt() {
+    local name=$1 rc=$2 before=$3 after=$4
+    if [ "$rc" -ge 128 ]; then
+        bad "$name" "died with a signal (exit $rc)"
+    elif [ "$rc" -ne 0 ]; then
+        if cmp -s "$before" "$after"; then
+            ok "$name (corrupt input refused, file untouched)"
+        else
+            bad "$name" "failed but modified the file"
+        fi
+    elif cmp -s "$before" "$after"; then
+        ok "$name (corrupt input accepted, file untouched)"
+    elif [ ! -s "$after" ]; then
+        bad "$name" "exited 0 but left no output"
+    elif [ -z "$(dimensions_of "$after")" ]; then
+        bad "$name" "exited 0 but the rewritten file does not decode"
+    else
+        ok "$name (corrupt input accepted and rewritten to a decodable file)"
+    fi
+}
+
 # --- JPEG: Jpegli, through jpegtran and jpegoptim ----------------------------
 
 echo
@@ -254,28 +282,19 @@ for want in "${PNGSUITE_WANTED[@]}"; do
     "$TOOLS/oxipng" -o 2 -q --strip safe "$WORK_DIR/ox-$want" >/dev/null 2>&1
     rc=$?
     if [ "$corrupt" -eq 1 ]; then
-        # Corrupt input must be refused cleanly: a non-zero exit is fine, a
-        # signal is not, and the file must not be replaced with garbage.
-        if [ "$rc" -ge 128 ]; then
-            bad "oxipng $want (corrupt)" "died with a signal (exit $rc)"
-        elif [ "$rc" -ne 0 ] && cmp -s "$f" "$WORK_DIR/ox-$want"; then
-            ok "oxipng $want (corrupt input refused, file untouched)"
-        elif [ "$rc" -eq 0 ]; then
-            ok "oxipng $want (corrupt input accepted and rewritten)"
-        else
-            bad "oxipng $want (corrupt)" "failed but modified the file"
-        fi
+        assert_corrupt "oxipng $want (corrupt)" "$rc" "$f" "$WORK_DIR/ox-$want"
     elif [ "$rc" -eq 0 ]; then
         assert_pass "oxipng $want" "$f" "$WORK_DIR/ox-$want"
     else
         bad "oxipng $want" "exited $rc on a valid PNG"
     fi
 
-    [ "$corrupt" -eq 1 ] && continue
     cp "$f" "$WORK_DIR/pc-$want"
     "$TOOLS/pngcrush" -q -ow "$WORK_DIR/pc-$want" >/dev/null 2>&1
     rc=$?
-    if [ "$rc" -eq 0 ]; then
+    if [ "$corrupt" -eq 1 ]; then
+        assert_corrupt "pngcrush $want (corrupt)" "$rc" "$f" "$WORK_DIR/pc-$want"
+    elif [ "$rc" -eq 0 ]; then
         assert_pass "pngcrush $want" "$f" "$WORK_DIR/pc-$want"
     elif [ "$rc" -ge 128 ]; then
         bad "pngcrush $want" "died with a signal (exit $rc)"
@@ -329,36 +348,62 @@ done
 echo
 echo "SVG — SVGO v4"
 SVGO_JS="$TOOLS/svgo.js"
-if [ -f "$SVGO_JS" ] && command -v node >/dev/null 2>&1; then
+XMLLINT=/usr/bin/xmllint
+
+# The ids a document references through url(#…), one per line.
+refs_in() { grep -o 'url(#[^)]*)' "$1" | sed 's/url(#//;s/)//' | sort -u; }
+
+if [ ! -f "$SVGO_JS" ]; then
+    # find_tools already proved the bundle is there, so svgo.js missing from it
+    # is a packaging error that makes SvgoWorker decline every SVG.
+    bad "svgo" "svgo.js is not in the bundle, so no SVG would ever be optimized"
+elif ! command -v node >/dev/null 2>&1; then
+    skip "svgo" "node is not installed"
+else
     for src in "$CACHE_DIR"/svg-*.svg; do
         [ -f "$src" ] || continue
         n=$(basename "$src")
         f=$(copy_in "$src")
         if node "$SVGO_JS" 0 "$f" "$WORK_DIR/sv-$n" 2>/dev/null && [ -s "$WORK_DIR/sv-$n" ]; then
             sb=$(size_of "$f"); sa=$(size_of "$WORK_DIR/sv-$n")
-            if ! grep -q '<svg' "$WORK_DIR/sv-$n"; then
-                bad "svgo $n" "output is not an SVG"
-            elif [ "$sa" -gt "$sb" ]; then
+            # The raster paths run the output through a decoder; this is the
+            # equivalent for SVG, since truncated XML can still contain "<svg".
+            if [ ! -x "$XMLLINT" ]; then
+                skip "svgo $n parses" "xmllint is not available here"
+            elif ! "$XMLLINT" --noout "$WORK_DIR/sv-$n" 2>/dev/null; then
+                bad "svgo $n" "output is not well-formed XML"
+            elif ! grep -q '<svg' "$WORK_DIR/sv-$n"; then
+                bad "svgo $n" "output parses but has no <svg> element"
+            else
+                ok "svgo $n parses as XML"
+            fi
+            if [ "$sa" -gt "$sb" ]; then
                 ok "svgo $n (${sb} -> ${sa} bytes; larger, so the worker discards it)"
             else
                 ok "svgo $n (${sb} -> ${sa} bytes)"
             fi
-            # Every url(#id) reference must still resolve in the output.
+            # Every url(#id) reference must still resolve, and none may have
+            # vanished: dropping a reference along with its target is the
+            # rendering regression this is here to catch. cleanupIds renames
+            # ids, so the input and output sets are compared by count, not by
+            # name.
             dangling=0
-            for ref in $(grep -o 'url(#[^)]*)' "$WORK_DIR/sv-$n" | sed 's/url(#//;s/)//' | sort -u); do
+            for ref in $(refs_in "$WORK_DIR/sv-$n"); do
                 grep -q "id=\"$ref\"" "$WORK_DIR/sv-$n" || dangling=1
             done
-            if [ "$dangling" -eq 0 ]; then
-                ok "svgo $n kept every url(#…) reference resolvable"
-            else
+            rin=$(refs_in "$f" | wc -l | tr -d ' ')
+            rout=$(refs_in "$WORK_DIR/sv-$n" | wc -l | tr -d ' ')
+            if [ "$dangling" -ne 0 ]; then
                 bad "svgo $n" "an id referenced by url(#…) was removed"
+            elif [ "$rout" -lt "$rin" ]; then
+                bad "svgo $n" "url(#…) references disappeared: $rin -> $rout"
+            else
+                ok "svgo $n kept all $rin url(#…) references resolvable"
             fi
         else
             bad "svgo $n" "produced no output"
         fi
     done
-else
-    skip "svgo" "svgo.js or node unavailable"
 fi
 
 # --- AVIF --------------------------------------------------------------------
@@ -393,10 +438,12 @@ for src in "$CACHE_DIR"/*.avifs; do
     fi
 done
 
-# The gain-map probe AVIFWorker relies on is a literal string match.
+# The gain-map probe AVIFWorker relies on is a literal string match, and the
+# worker pipes only stdout, so stderr is discarded here too: output that moved
+# to stderr would make the worker decline every file.
 probe=$(find "$CACHE_DIR" -name 'avif-8bpc-yuv420.avif' | head -1)
 if [ -n "$probe" ]; then
-    if "$TOOLS/avifdec" --info "$probe" 2>&1 | grep -q ' \* Gain map       : Absent'; then
+    if "$TOOLS/avifdec" --info "$probe" 2>/dev/null | grep -q ' \* Gain map       : Absent'; then
         ok "avifdec --info still prints the exact gain-map line AVIFWorker matches"
     else
         bad "avif gain-map probe" "that line changed — AVIFWorker would skip every file"
@@ -422,9 +469,10 @@ for src in "$CACHE_DIR"/jxl-*.jxl; do
     fi
 
     # JXLWorker reads bit depth out of jxlinfo -v with a regex and declines
-    # anything float or above 16 bits. This is that regex, so a bare "10-bit"
-    # without the comma the worker requires fails here too.
-    if "$TOOLS/jxlinfo" -v "$f" 2>&1 | grep -Eq ', [0-9]+-bit|bits per sample: [0-9]+'; then
+    # anything float or above 16 bits. This is that regex, on the stdout the
+    # worker pipes, so a bare "10-bit" without the comma the worker requires —
+    # or output that moved to stderr — fails here too.
+    if "$TOOLS/jxlinfo" -v "$f" 2>/dev/null | grep -Eq ', [0-9]+-bit|bits per sample: [0-9]+'; then
         ok "jxlinfo -v reports bit depth for $n in the form JXLWorker parses"
     else
         bad "jxl bit-depth probe $n" "jxlinfo output no longer matches the worker's regex"
