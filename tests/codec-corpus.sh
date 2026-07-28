@@ -4,8 +4,9 @@
 #
 #   1. the file ImageOptim would keep is never larger than the input
 #   2. output still decodes, at the original dimensions
-#   3. a file the worker declines is left byte-identical
-#   4. nothing crashes, even on deliberately corrupt input
+#   3. a lossless pass decodes to exactly the pixels it started from
+#   4. a file the worker declines is left byte-identical
+#   5. nothing crashes, even on deliberately corrupt input
 #
 # The corpus is downloaded from upstream test suites rather than generated
 # here, so the awkward cases are the ones those projects actually curate —
@@ -50,20 +51,25 @@ skip() { SKIP=$((SKIP+1)); printf '  skip  %s (%s)\n' "$1" "$2"; }
 
 find_tools() {
     # Every checkout shares one DerivedData directory, so ask Xcode where this
-    # project's products go and try that first — a stale bundle from another
-    # checkout, whether in DerivedData or left behind in the tree, would let the
-    # corpus pass having exercised codecs this checkout never built. The in-tree
-    # paths are only a fallback for when xcodebuild cannot answer.
+    # project's products go and use that answer alone — a stale bundle from
+    # another checkout, whether in DerivedData or left behind in the tree, would
+    # let the corpus pass having exercised codecs this checkout never built. The
+    # in-tree paths are only for when xcodebuild cannot answer at all: falling
+    # back to them once it has answered would pick up such a bundle whenever the
+    # products directory it named is simply not built yet.
     local candidates=()
     local built
     built="$(xcodebuild -project "$ROOT_DIR/imageoptim/ImageOptim.xcodeproj" \
         -target ImageOptim -configuration Release -showBuildSettings 2>/dev/null |
         /usr/bin/awk '/^ *BUILT_PRODUCTS_DIR = /{sub(/^ *BUILT_PRODUCTS_DIR = /, ""); print; exit}')"
-    [ -n "$built" ] && candidates+=("$built/ImageOptim.app/Contents/Frameworks/ImageOptimGPL.framework/Versions/A/Resources")
-    candidates+=(
-        "$ROOT_DIR/imageoptim/build/Release/ImageOptim.app/Contents/Frameworks/ImageOptimGPL.framework/Versions/A/Resources"
-        "$ROOT_DIR/build/Release/ImageOptim.app/Contents/Frameworks/ImageOptimGPL.framework/Versions/A/Resources"
-    )
+    if [ -n "$built" ]; then
+        candidates+=("$built/ImageOptim.app/Contents/Frameworks/ImageOptimGPL.framework/Versions/A/Resources")
+    else
+        candidates+=(
+            "$ROOT_DIR/imageoptim/build/Release/ImageOptim.app/Contents/Frameworks/ImageOptimGPL.framework/Versions/A/Resources"
+            "$ROOT_DIR/build/Release/ImageOptim.app/Contents/Frameworks/ImageOptimGPL.framework/Versions/A/Resources"
+        )
+    fi
 
     local dir
     for dir in "${candidates[@]}"; do
@@ -236,6 +242,52 @@ decoded_dimensions_of() {
     [ -s "$png" ] && dimensions_of "$png"
 }
 
+# A digest of what a file decodes to, blind to how those pixels were encoded;
+# empty when nothing here reads the format. Every lossless pass below is free to
+# re-represent the same image — reorder a palette, narrow the bit depth,
+# de-interlace, drop chunks, or rewrite the RGB underneath fully transparent
+# pixels, which pngcrush's -blacken and oxipng's -a do by design — so the
+# comparison has to happen after a decode, and after oxipng has normalised what
+# survives it. libjxl does the PNG and JPEG decoding rather than sips because
+# ImageIO decodes a progressive JPEG slightly differently from the baseline file
+# it was made from, which is no fault of jpegtran's; -j 0 keeps cjxl out of its
+# JPEG transcoding mode, so it decodes the pixels instead of repacking them.
+pixels_of() {
+    local src=$1 base png canon
+    base="pixels-$(basename "$src")"
+    png="$WORK_DIR/$base.png"
+    canon="$WORK_DIR/$base.canon.png"
+    rm -f "$png" "$canon"
+    case "$src" in
+        *.avif|*.avifs) "$TOOLS/avifdec" "$src" "$png" >/dev/null 2>&1 ;;
+        *.jxl)          "$TOOLS/djxl" "$src" "$png" >/dev/null 2>&1 ;;
+        *)              "$TOOLS/cjxl" -q 100 -j 0 -e 1 "$src" "$WORK_DIR/$base.jxl" >/dev/null 2>&1 &&
+                            "$TOOLS/djxl" "$WORK_DIR/$base.jxl" "$png" >/dev/null 2>&1 ;;
+    esac
+    [ -s "$png" ] || return 0
+    "$TOOLS/oxipng" --strip=all -i0 -o2 -a --out "$canon" -- "$png" >/dev/null 2>&1 || return 0
+    /usr/bin/shasum -a 256 "$canon" | cut -d' ' -f1
+}
+
+# What a lossless pass must not do: change the image. Size and dimensions alone
+# would let a codec regression that shifted colours or alpha through the whole
+# corpus. The input digest is taken once per file by the caller.
+assert_same_pixels() {
+    local name=$1 before=$2 after=$3 after_pixels
+    if [ -z "$before" ]; then
+        skip "$name pixels" "no decoder here reads this format"
+        return
+    fi
+    after_pixels=$(pixels_of "$after")
+    if [ -z "$after_pixels" ]; then
+        bad "$name pixels" "output does not decode, though the input did"
+    elif [ "$before" != "$after_pixels" ]; then
+        bad "$name pixels" "a lossless pass changed the decoded image"
+    else
+        ok "$name kept every pixel it decoded from"
+    fi
+}
+
 # The worker contract: it replaces the file only when the result is smaller, so
 # a pass that grows a file is discarded, not wrong. What must never happen is
 # corrupt output or changed dimensions.
@@ -320,13 +372,19 @@ for src in "$CACHE_DIR"/jpeg-*.jpg; do
     [ -f "$src" ] || continue
     n=$(basename "$src")
     f=$(copy_in "$src")
+    # Taken once: everything jpegtran does here, and jpegoptim's lossless set,
+    # only rewrites the entropy coding, so every one of those outputs has to
+    # decode to exactly these pixels.
+    pixels=$(pixels_of "$f")
     if "$TOOLS/jpegtran" -copy none -optimize -outfile "$WORK_DIR/jt-$n" "$f" 2>/dev/null; then
         assert_pass "jpegtran $n" "$f" "$WORK_DIR/jt-$n"
+        assert_same_pixels "jpegtran $n" "$pixels" "$WORK_DIR/jt-$n"
     else
         bad "jpegtran $n" "exited non-zero"
     fi
     if "$TOOLS/jpegtran" -copy none -progressive -outfile "$WORK_DIR/jp-$n" "$f" 2>/dev/null; then
         assert_pass "jpegtran -progressive $n" "$f" "$WORK_DIR/jp-$n"
+        assert_same_pixels "jpegtran -progressive $n" "$pixels" "$WORK_DIR/jp-$n"
     else
         bad "jpegtran -progressive $n" "exited non-zero"
     fi
@@ -339,6 +397,10 @@ for src in "$CACHE_DIR"/jpeg-*.jpg; do
         cp "$f" "$out"
         if jo_out=$("$TOOLS/jpegoptim" $joargs -v -- "$out" 2>&1); then
             assert_pass "jpegoptim $jotag $n" "$f" "$out"
+            # Only the lossless set promises the pixels back; -m80 re-quantizes.
+            if [ "$jotag" = lossless ]; then
+                assert_same_pixels "jpegoptim $jotag $n" "$pixels" "$out"
+            fi
             # The worker takes the optimized size from the number after " --> " and
             # keeps the temp file only once that parse succeeded, so losing this
             # line would make ImageOptim discard every jpegoptim result.
@@ -395,6 +457,10 @@ for want in "${PNGSUITE_WANTED[@]}"; do
     case "$want" in x*) corrupt=1 ;; esac
     [ "$corrupt" -eq 0 ] && PNG_VALID=$((PNG_VALID+1))
     f=$(copy_in "$src")
+    # Every PNG tool here is a lossless pass, so each output is compared against
+    # the pixels of this file. A corrupt input has none worth preserving.
+    pixels=
+    [ "$corrupt" -eq 0 ] && pixels=$(pixels_of "$f")
 
     # OxiPngWorker's own argument set: the shipped level with metadata stripping,
     # written to a separate path rather than in place, as the worker does.
@@ -408,6 +474,7 @@ for want in "${PNGSUITE_WANTED[@]}"; do
         # oxipng copies the input across when it cannot improve on it, so an
         # already-optimal PNG still leaves a file the worker would compare.
         assert_pass "oxipng $want" "$f" "$out"
+        assert_same_pixels "oxipng $want" "$pixels" "$out"
     else
         bad "oxipng $want" "exited $rc on a valid PNG"
     fi
@@ -429,6 +496,7 @@ for want in "${PNGSUITE_WANTED[@]}"; do
         elif [ "$rc" -eq 0 ]; then
             if [ -s "$out" ]; then
                 assert_pass "$label" "$f" "$out"
+                assert_same_pixels "$label" "$pixels" "$out"
                 case " $PNGCRUSH_SUCCEEDED " in
                     *" $pctag "*) ;;
                     *) PNGCRUSH_SUCCEEDED="$PNGCRUSH_SUCCEEDED $pctag" ;;
@@ -456,31 +524,39 @@ for want in "${PNGSUITE_WANTED[@]}"; do
         po_out=$("$TOOLS/pngout" $poargs -v "$f" - 2>&1 >"$out")
         rc=$?
         label="pngout $potag $want"
+        # PngoutWorker takes the optimized size from the "Out:" line and keeps the
+        # temp file only once that parse succeeded, so losing the line would make
+        # ImageOptim discard every pngout result. It splits on CR as well as LF,
+        # since pngout writes its progress with CR.
+        po_size_line=0
+        tr '\r' '\n' <<< "$po_out" | grep -Eq '^Out: *[0-9]+' && po_size_line=1
         if [ "$corrupt" -eq 1 ]; then
             assert_corrupt_out "$label (corrupt)" "$rc" "$out"
         elif [ "$rc" -ge 128 ]; then
             bad "$label" "died with a signal (exit $rc)"
-        elif [ -s "$out" ]; then
+        # The worker discards every status but 0 and pngout's early-exit 2, and
+        # even those only with a size to hand on, so a file written alongside any
+        # other status is not a result this harness may count.
+        elif { [ "$rc" -eq 0 ] || [ "$rc" -eq 2 ]; } && [ -s "$out" ] && [ "$po_size_line" -eq 1 ]; then
             assert_pass "$label" "$f" "$out"
-            # PngoutWorker takes the optimized size from the "Out:" line and
-            # keeps the temp file only once that parse succeeded, so losing the
-            # line would make ImageOptim discard every pngout result. It splits
-            # on CR as well as LF, since pngout writes its progress with CR.
-            if tr '\r' '\n' <<< "$po_out" | grep -Eq '^Out: *[0-9]+'; then
-                ok "pngout -v still prints the size line PngoutWorker parses for $potag $want"
-            else
-                bad "pngout size probe $potag $want" "no 'Out: <size>' line, so fileSizeOptimized would stay zero"
-            fi
+            assert_same_pixels "$label" "$pixels" "$out"
+            ok "pngout -v still prints the size line PngoutWorker parses for $potag $want"
             case " $PNGOUT_SUCCEEDED " in
                 *" $potag "*) ;;
                 *) PNGOUT_SUCCEEDED="$PNGOUT_SUCCEEDED $potag" ;;
             esac
         elif [ "$rc" -eq 0 ]; then
-            bad "$label" "exited 0 without writing anything to stdout"
+            # Exit 0 is a run ImageOptim would keep, so anything missing from it
+            # is a failure rather than pngout declining the variant.
+            if [ ! -s "$out" ]; then
+                bad "$label" "exited 0 without writing anything to stdout"
+            else
+                bad "pngout size probe $potag $want" "no 'Out: <size>' line, so fileSizeOptimized would stay zero"
+            fi
         else
             # pngout exits non-zero when it cannot improve on the input, and the
             # worker keeps nothing in that case either.
-            skip "$label" "declined this variant, nothing written"
+            skip "$label" "declined this variant (exit $rc), nothing the worker would keep"
         fi
     done
 
@@ -499,13 +575,19 @@ for want in "${PNGSUITE_WANTED[@]}"; do
             bad "$label" "exited $rc on a valid PNG"
         else
             assert_pass "$label" "$f" "$out"
+            assert_same_pixels "$label" "$pixels" "$out"
             # The worker reads the optimized size from the second number of the
-            # report and hands it to tempCopyOfPath:size:, which drops the
-            # result when it does not match the file advpng actually wrote.
-            if /usr/bin/awk '$1 ~ /^[0-9]+$/ && $2 ~ /^[0-9]+$/ { found = 1 } END { exit found ? 0 : 1 }' <<< "$ad_out"; then
-                ok "advpng still prints the two sizes AdvCompWorker parses for $want"
-            else
+            # first line that holds a pair, exactly as NSScanner does, and hands
+            # it to tempCopyOfPath:size:, which drops the result unless it matches
+            # the file advpng actually wrote. A pair that no longer is that size
+            # therefore loses every advpng result, so compare the value itself.
+            ad_reported=$(/usr/bin/awk '$1 ~ /^[0-9]+$/ && $2 ~ /^[0-9]+$/ { print $2; exit }' <<< "$ad_out")
+            if [ -z "$ad_reported" ]; then
                 bad "advpng size probe $want" "no '<original> <optimized>' line, so AdvCompWorker would keep nothing"
+            elif [ "$ad_reported" != "$(size_of "$out")" ]; then
+                bad "advpng size probe $want" "reports $ad_reported bytes for a file of $(size_of "$out"), so tempCopyOfPath:size: would drop it"
+            else
+                ok "advpng still reports the optimized size AdvCompWorker parses for $want"
             fi
         fi
     fi
@@ -746,6 +828,15 @@ for src in "$CACHE_DIR"/avif-*.avif ${PLAIN_AVIF:+"$PLAIN_AVIF"}; do
             out="$WORK_DIR/re-$avtag-$n"
             if "$TOOLS/avifenc" $avq $depthargs -s 4 "$WORK_DIR/dec-$n.png" "$out" >/dev/null 2>&1; then
                 assert_pass "avif $avtag round-trip $n" "$f" "$out"
+                # Only --lossless owes the pixels back; -q 85 is the lossy path.
+                # Even --lossless is bit-exact only when the depth survives the
+                # PNG hop: avifenc warns as much for a >8-bit image, whose 16-bit
+                # PNG it has to narrow to the original depth again.
+                if [ "$avtag" = lossless ] && [ -n "$depthargs" ]; then
+                    skip "avif lossless round-trip $n pixels" "avifenc warns that re-encoding ${depth}-bit from a 16-bit PNG may not be lossless"
+                elif [ "$avtag" = lossless ]; then
+                    assert_same_pixels "avif lossless round-trip $n" "$(pixels_of "$f")" "$out"
+                fi
                 if [ -n "$depth" ]; then
                     redepth=$(avif_depth_of "$out")
                     if [ "$depth" = "$redepth" ]; then
@@ -892,6 +983,12 @@ for src in "$CACHE_DIR"/jxl-*.jxl; do
                 out="$WORK_DIR/re-$jxtag-$n"
                 if "$TOOLS/cjxl" -q "$jxq" -e 9 "$frame" "$out" >/dev/null 2>&1; then
                     assert_pass "jxl $jxtag round-trip $n" "$f" "$out"
+                    # -q 100 is cjxl's lossless mode, so the frame it was handed
+                    # has to come back out of the re-encode unchanged; -q 90 is
+                    # the lossy path and owes nothing.
+                    if [ "$jxtag" = lossless ]; then
+                        assert_same_pixels "jxl lossless round-trip $n" "$(pixels_of "$frame")" "$out"
+                    fi
                 else
                     bad "jxl $jxtag round-trip $n" "cjxl failed on the decoded PNG"
                 fi

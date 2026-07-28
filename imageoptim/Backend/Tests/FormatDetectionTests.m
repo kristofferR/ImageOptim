@@ -114,8 +114,13 @@ static NSData *AvifFile(NSString *majorBrand, NSArray<NSString *> *compatibleBra
     XCTAssertTrue(byCompatibleBrand->isAnimated);
 }
 
+/* The 16-byte extended header, major brand, minor version and one compatible
+   brand come to 28 bytes, and avif is only in the compatible list, so the
+   declared size has to reach past the header for this to be detected at all. A
+   size of 24 would stop at the minor version and leave the brand outside the
+   box, which the major brand alone would then paper over. */
 - (void)testDetectsAvifWith64BitBoxSize {
-    NSData *data = FtypBox(24, @"avif", @[@"mif1"], YES);
+    NSData *data = FtypBox(28, @"mif1", @[@"avif"], YES);
     XCTAssertEqual([self detected:data]->fileType, FILETYPE_AVIF);
 }
 
