@@ -78,8 +78,13 @@ echo "tools: $TOOLS"
 
 # --- corpus ------------------------------------------------------------------
 
-AVIF_BASE="https://raw.githubusercontent.com/link-u/avif-sample-images/master"
-JXL_BASE="https://raw.githubusercontent.com/libjxl/testdata/main"
+# Pinned to commits, not branch heads: a corpus that followed master would let
+# the same ImageOptim commit test different bytes on a machine whose cache is
+# cold, and an upstream rewrite or deletion would quietly drop one of the
+# characteristics this harness claims to cover. The W3C URLs below are already a
+# dated snapshot, and PngSuite is pinned by archive digest.
+AVIF_BASE="https://raw.githubusercontent.com/link-u/avif-sample-images/c666a368b73006246694919b5dbcc078317af6cc"
+JXL_BASE="https://raw.githubusercontent.com/libjxl/testdata/73695d303670c90e4d506ea89d9901b081385089"
 
 # "<destination name>|<url>"
 CORPUS=(
@@ -99,14 +104,14 @@ CORPUS=(
     "gif-animation-patches.gif|$JXL_BASE/jxl/animation_patches.gif"
 
     # libjpeg-turbo's reference JPEG
-    "jpeg-testorig.jpg|https://raw.githubusercontent.com/libjpeg-turbo/libjpeg-turbo/main/testimages/testorig.jpg"
+    "jpeg-testorig.jpg|https://raw.githubusercontent.com/libjpeg-turbo/libjpeg-turbo/52da6095c9986f485e29d9f51bd9042f7911681a/testimages/testorig.jpg"
 
     # SVG: two W3C conformance cases and a real-world icon. The gradient case is
     # the one that carries url(#…) references, which is what the audit below
     # needs to have anything to say about cleanupIds.
     "svg-w3c-struct-image.svg|https://www.w3.org/Graphics/SVG/Test/20110816/svg/struct-image-01-t.svg"
     "svg-w3c-gradients.svg|https://www.w3.org/Graphics/SVG/Test/20110816/svg/pservers-grad-01-b.svg"
-    "svg-bootstrap-gear.svg|https://raw.githubusercontent.com/twbs/icons/main/icons/gear.svg"
+    "svg-bootstrap-gear.svg|https://raw.githubusercontent.com/twbs/icons/e3ba0e23490599192547000a7f78652342339e28/icons/gear.svg"
 )
 
 # PngSuite carries the awkward PNGs: interlaced, 16-bit, palette+tRNS, and a
@@ -128,8 +133,8 @@ PNGSUITE_WANTED=(
     tbbn3p08.png  # palette with tRNS
     s01i3p01.png  # 1x1 interlaced
     s40i3p04.png  # 40x40 interlaced palette
-    x00n0g01.png  # corrupt: zero-length IDAT
-    xcrn0g04.png  # corrupt: broken CRC
+    xdtn0g01.png  # corrupt: missing IDAT chunk
+    xcrn0g04.png  # corrupt: stray CR bytes injected
 )
 
 # Names of the inputs that could not be fetched or unpacked; each one is
@@ -597,10 +602,39 @@ avif_depth_of() {
         /usr/bin/sed -n 's/^ \* Bit Depth      : \([0-9][0-9]*\).*/\1/p' | head -1
 }
 
-for src in "$CACHE_DIR"/avif-*.avif; do
+# Both literals AVIFWorker requires before it will touch a file at all.
+avif_worker_accepts() {
+    local info
+    info="$("$TOOLS/avifdec" --info "$1" 2>/dev/null)"
+    grep -q ' \* Gain map       : Absent' <<< "$info" &&
+        grep -q ' \* Transformations: None' <<< "$info"
+}
+
+# Every fox.* sample carries a pasp box, so AVIFWorker declines all of them, and
+# a round trip run only on those would stay green even if ImageOptim refused
+# every AVIF it ever met. avifenc writes none of the transformation boxes, so its
+# own output is the transformation-free file the worker would accept; it joins
+# the corpus below and is what the string probe reads afterwards.
+PLAIN_AVIF=
+avif_seed=$(find "$CACHE_DIR" -name 'avif-8bpc-yuv420.avif' | head -1)
+# Kept out of $WORK_DIR itself, which is where copy_in puts the working copies.
+mkdir -p "$WORK_DIR/fixtures"
+if [ -n "$avif_seed" ] &&
+    "$TOOLS/avifdec" "$avif_seed" "$WORK_DIR/avif-plain.png" >/dev/null 2>&1 &&
+    "$TOOLS/avifenc" --lossless -s 4 "$WORK_DIR/avif-plain.png" "$WORK_DIR/fixtures/avif-plain.avif" >/dev/null 2>&1; then
+    PLAIN_AVIF="$WORK_DIR/fixtures/avif-plain.avif"
+else
+    bad "avif transformation-free fixture" "could not write one, so nothing here is an AVIF the worker would take on"
+fi
+
+# How many of the files below AVIFWorker would actually hand to avifenc.
+AVIF_ELIGIBLE=0
+
+for src in "$CACHE_DIR"/avif-*.avif ${PLAIN_AVIF:+"$PLAIN_AVIF"}; do
     [ -f "$src" ] || continue
     n=$(basename "$src")
     f=$(copy_in "$src")
+    avif_worker_accepts "$f" && AVIF_ELIGIBLE=$((AVIF_ELIGIBLE+1))
     depth=$(avif_depth_of "$f")
     if [ -z "$depth" ]; then
         bad "avif bit-depth probe $n" "avifdec --info no longer prints the depth AVIFWorker re-encodes with"
@@ -638,6 +672,14 @@ for src in "$CACHE_DIR"/avif-*.avif; do
     fi
 done
 
+# A round trip run only on files the worker's info guards reject says nothing
+# about what ImageOptim does with an AVIF.
+if [ "$AVIF_ELIGIBLE" -gt 0 ]; then
+    ok "avif round-tripped $AVIF_ELIGIBLE file(s) AVIFWorker would hand to avifenc"
+else
+    bad "avif worker eligibility" "no AVIF here passes AVIFWorker's info guards, so the round trips above prove nothing about the app"
+fi
+
 # Animated AVIF must be recognisable as such: AVIFWorker keys on the avis brand
 # in the ftyp box and declines the file, because avifenc cannot re-encode a
 # sequence. Confirm real-world .avifs files actually carry that brand.
@@ -656,26 +698,19 @@ done
 # stderr, or either line changing shape, would make the worker decline every
 # file. The transformations line only reads "None" for a file carrying no
 # clap/irot/imir/pasp box, and every fox.* sample carries a pasp, so that
-# literal is probed on an AVIF avifenc wrote instead.
-probe=$(find "$CACHE_DIR" -name 'avif-8bpc-yuv420.avif' | head -1)
-if [ -n "$probe" ]; then
-    if "$TOOLS/avifdec" --info "$probe" 2>/dev/null | grep -q ' \* Gain map       : Absent'; then
+# literal is probed on the transformation-free AVIF written above instead.
+if [ -n "$avif_seed" ]; then
+    if "$TOOLS/avifdec" --info "$avif_seed" 2>/dev/null | grep -q ' \* Gain map       : Absent'; then
         ok "avifdec --info still prints the exact gain-map line AVIFWorker matches"
     else
         bad "avif gain-map probe" "that line changed — AVIFWorker would skip every file"
     fi
-
-    plain="$WORK_DIR/avif-plain.avif"
-    rm -f "$plain"
-    if "$TOOLS/avifdec" "$probe" "$WORK_DIR/avif-plain.png" >/dev/null 2>&1 &&
-        "$TOOLS/avifenc" --lossless -s 4 "$WORK_DIR/avif-plain.png" "$plain" >/dev/null 2>&1; then
-        if "$TOOLS/avifdec" --info "$plain" 2>/dev/null | grep -q ' \* Transformations: None'; then
-            ok "avifdec --info still prints the exact transformations line AVIFWorker matches"
-        else
-            bad "avif transformations probe" "that line changed — AVIFWorker would skip every file"
-        fi
+fi
+if [ -n "$PLAIN_AVIF" ]; then
+    if "$TOOLS/avifdec" --info "$PLAIN_AVIF" 2>/dev/null | grep -q ' \* Transformations: None'; then
+        ok "avifdec --info still prints the exact transformations line AVIFWorker matches"
     else
-        bad "avif transformations probe" "could not write a transformation-free AVIF to probe"
+        bad "avif transformations probe" "that line changed — AVIFWorker would skip every file"
     fi
 fi
 
