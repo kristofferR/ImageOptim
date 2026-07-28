@@ -79,8 +79,10 @@
                                       @"JpegTranStripAll" : @(YES),
                                       @"GifsicleEnabled" : @(YES),
                                       @"AvifEnabled" : @(YES),
+                                      @"JxlEnabled" : @(YES),
                                       @"PngMinQuality" : @(70),
                                       @"JpegOptimMaxQuality" : @(80),
+                                      @"JxlQuality" : @(90),
                                       @"LossyEnabled" : @(YES),
                                   }];
 
