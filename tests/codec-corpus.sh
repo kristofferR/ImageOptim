@@ -227,8 +227,9 @@ dimensions_of() {
 }
 
 # sips has no AVIF or JPEG XL decoder on older macOS, but the bundled decoders
-# do on every host. Decoding to PNG — which sips reads everywhere — keeps the
-# invariant checked instead of leaving the encoder's output unexamined.
+# do on every host. Decode every format to PNG before reading its dimensions:
+# asking sips for dimensions directly can succeed from an intact header even
+# when the compressed payload is truncated.
 decoded_dimensions_of() {
     local src=$1
     local png
@@ -237,7 +238,7 @@ decoded_dimensions_of() {
     case "$src" in
         *.avif|*.avifs) "$TOOLS/avifdec" "$src" "$png" >/dev/null 2>&1 ;;
         *.jxl)          "$TOOLS/djxl" "$src" "$png" >/dev/null 2>&1 ;;
-        *)              return 0 ;;
+        *)              /usr/bin/sips -s format png "$src" --out "$png" >/dev/null 2>&1 ;;
     esac
     [ -s "$png" ] && dimensions_of "$png"
 }
@@ -351,12 +352,7 @@ assert_pass() {
     if [ ! -s "$after" ]; then bad "$name" "produced no output"; return; fi
     local sb sa db da
     sb=$(size_of "$before"); sa=$(size_of "$after")
-    db=$(dimensions_of "$before"); da=$(dimensions_of "$after")
-    if [ -z "$db" ]; then
-        # sips has no decoder for this format on this host — AVIF and JPEG XL on
-        # older macOS — so ask the bundled decoder instead.
-        db=$(decoded_dimensions_of "$before"); da=$(decoded_dimensions_of "$after")
-    fi
+    db=$(decoded_dimensions_of "$before"); da=$(decoded_dimensions_of "$after")
     if [ -z "$db" ]; then
         # Nothing here can read the input, so nothing can judge the output
         # either. Say so rather than let the invariant pass unchecked.
@@ -375,24 +371,20 @@ assert_pass() {
     fi
 }
 
-# Corrupt input must be refused cleanly: a non-zero exit is fine, a signal is
-# not, the file must not be replaced with garbage, and a tool that claims
+# Corrupt input must be refused cleanly: a non-zero exit is fine and makes the
+# worker discard its temporary copy, a signal is not, and a tool that claims
 # success has to leave behind something that still decodes.
 assert_corrupt() {
     local name=$1 rc=$2 before=$3 after=$4
     if [ "$rc" -ge 128 ]; then
         bad "$name" "died with a signal (exit $rc)"
     elif [ "$rc" -ne 0 ]; then
-        if cmp -s "$before" "$after"; then
-            ok "$name (corrupt input refused, file untouched)"
-        else
-            bad "$name" "failed but modified the file"
-        fi
+        ok "$name (corrupt input refused; temporary output discarded)"
     elif cmp -s "$before" "$after"; then
         ok "$name (corrupt input accepted, file untouched)"
     elif [ ! -s "$after" ]; then
         bad "$name" "exited 0 but left no output"
-    elif [ -z "$(dimensions_of "$after")" ]; then
+    elif [ -z "$(decoded_dimensions_of "$after")" ]; then
         bad "$name" "exited 0 but the rewritten file does not decode"
     else
         ok "$name (corrupt input accepted and rewritten to a decodable file)"
@@ -412,7 +404,7 @@ assert_corrupt_out() {
         ok "$name (corrupt input refused)"
     elif [ ! -s "$out" ] || [ "$(size_of "$out")" -le "$discard_at_or_below" ]; then
         ok "$name (corrupt input accepted, but nothing the worker would keep)"
-    elif [ -z "$(dimensions_of "$out")" ]; then
+    elif [ -z "$(decoded_dimensions_of "$out")" ]; then
         bad "$name" "exited 0 but the output does not decode"
     else
         ok "$name (corrupt input accepted and rewritten to a decodable file)"
@@ -423,6 +415,7 @@ assert_corrupt_out() {
 
 echo
 echo "JPEG — jpegtran and jpegoptim linked against Jpegli"
+JPEG_LOSSY_RETAINED=0
 for src in "$CACHE_DIR"/jpeg-*.jpg; do
     [ -f "$src" ] || continue
     n=$(basename "$src")
@@ -455,6 +448,8 @@ for src in "$CACHE_DIR"/jpeg-*.jpg; do
             # Only the lossless set promises the pixels back; -m80 re-quantizes.
             if [ "$jotag" = lossless ]; then
                 assert_same_pixels "jpegoptim $jotag $n" "$pixels" "$out"
+            elif [ "$(( $(size_of "$out") * 100 ))" -lt "$(( $(size_of "$f") * 95 ))" ]; then
+                JPEG_LOSSY_RETAINED=$((JPEG_LOSSY_RETAINED+1))
             fi
             # The worker takes the optimized size from the number after " --> " and
             # keeps the temp file only once that parse succeeded, so losing this
@@ -469,6 +464,11 @@ for src in "$CACHE_DIR"/jpeg-*.jpg; do
         fi
     done
 done
+if [ "$JPEG_LOSSY_RETAINED" -gt 0 ]; then
+    ok "jpegoptim lossy produced $JPEG_LOSSY_RETAINED result(s) JpegoptimWorker would retain"
+else
+    bad "jpegoptim lossy retention" "no result cleared JpegoptimWorker's 5% minimum-savings gate"
+fi
 
 # --- PNG: the tools left after Zopfli's removal ------------------------------
 
@@ -693,6 +693,7 @@ GIF_WORKER_OPTS="-O3 --careful --no-comments --no-names --same-delay --same-loop
 # hard-coded number would leave the argument ImageOptim actually runs — 6, 22 or
 # 43 at the shipped quality of 80, depending on the size — unexercised.
 GIF_QUALITY=80
+GIF_LOSSY_RETAINED=0
 gif_lossy_for() { # <file> -> the --lossy value GifsicleWorker would pass for it
     /usr/bin/awk -v q="$GIF_QUALITY" -v size="$(size_of "$1")" 'BEGIN {
         loss = int((100 - q) ^ 1.8 / 5.0)
@@ -737,6 +738,9 @@ for src in "$CACHE_DIR"/gif-*.gif; do
                 else
                     ok "$label kept every rendered frame pixel"
                 fi
+            elif [ "$tag" = lossy ] &&
+                [ "$(( $(size_of "$outfile") * (105 + (100 - GIF_QUALITY) / 2) / 100 ))" -lt "$(size_of "$f")" ]; then
+                GIF_LOSSY_RETAINED=$((GIF_LOSSY_RETAINED+1))
             fi
         else
             bad "$label" "gifsicle failed (are --lossy and the worker's options present?)"
@@ -763,6 +767,11 @@ for src in "$CACHE_DIR"/gif-*.gif; do
         done
     fi
 done
+if [ "$GIF_LOSSY_RETAINED" -gt 0 ]; then
+    ok "gifsicle lossy produced $GIF_LOSSY_RETAINED result(s) GifsicleWorker would retain"
+else
+    bad "gifsicle lossy retention" "no result cleared GifsicleWorker's quality-$GIF_QUALITY minimum-savings gate"
+fi
 
 # --- SVG: SVGO v4 ------------------------------------------------------------
 
@@ -903,12 +912,17 @@ fi
 
 # How many of the files below AVIFWorker would actually hand to avifenc.
 AVIF_ELIGIBLE=0
+AVIF_LOSSY_RETAINED=0
 
 for src in "$CACHE_DIR"/avif-*.avif ${PLAIN_AVIF:+"$PLAIN_AVIF"}; do
     [ -f "$src" ] || continue
     n=$(basename "$src")
     f=$(copy_in "$src")
-    avif_worker_accepts "$f" && AVIF_ELIGIBLE=$((AVIF_ELIGIBLE+1))
+    avif_eligible=0
+    if avif_worker_accepts "$f"; then
+        avif_eligible=1
+        AVIF_ELIGIBLE=$((AVIF_ELIGIBLE+1))
+    fi
     depth=$(avif_depth_of "$f")
     if [ -z "$depth" ]; then
         bad "avif bit-depth probe $n" "avifdec --info no longer prints the depth AVIFWorker re-encodes with"
@@ -937,6 +951,9 @@ for src in "$CACHE_DIR"/avif-*.avif ${PLAIN_AVIF:+"$PLAIN_AVIF"}; do
                     skip "avif lossless round-trip $n pixels" "avifenc warns that re-encoding ${depth}-bit from a 16-bit PNG may not be lossless"
                 elif [ "$avtag" = lossless ]; then
                     assert_same_pixels "avif lossless round-trip $n" "$(pixels_of "$f")" "$out"
+                elif [ "$avif_eligible" -eq 1 ] &&
+                    [ "$(( $(size_of "$out") * 100 ))" -le "$(( $(size_of "$f") * 95 ))" ]; then
+                    AVIF_LOSSY_RETAINED=$((AVIF_LOSSY_RETAINED+1))
                 fi
                 if [ -n "$depth" ]; then
                     redepth=$(avif_depth_of "$out")
@@ -961,6 +978,11 @@ if [ "$AVIF_ELIGIBLE" -gt 0 ]; then
     ok "avif round-tripped $AVIF_ELIGIBLE file(s) AVIFWorker would hand to avifenc"
 else
     bad "avif worker eligibility" "no AVIF here passes AVIFWorker's info guards, so the round trips above prove nothing about the app"
+fi
+if [ "$AVIF_LOSSY_RETAINED" -gt 0 ]; then
+    ok "avif lossy produced $AVIF_LOSSY_RETAINED result(s) AVIFWorker would retain"
+else
+    bad "avif lossy retention" "no eligible result cleared AVIFWorker's 5% minimum-savings gate"
 fi
 
 # Animated AVIF must be recognisable as such: AVIFWorker keys on the avis brand
@@ -1041,6 +1063,7 @@ jxl_worker_accepts() { # <jxlinfo -v output>
 # How many of the files below JXLWorker would actually re-encode: the ones its
 # info guards accept and that djxl decodes to the single image PNG can hold.
 JXL_ELIGIBLE=0
+JXL_LOSSY_RETAINED=0
 
 for src in "$CACHE_DIR"/jxl-*.jxl; do
     [ -f "$src" ] || continue
@@ -1094,6 +1117,9 @@ for src in "$CACHE_DIR"/jxl-*.jxl; do
                     # the lossy path and owes nothing.
                     if [ "$jxtag" = lossless ]; then
                         assert_same_pixels "jxl lossless round-trip $n" "$(pixels_of "$frame")" "$out"
+                    elif [ "$accepts" -eq 1 ] &&
+                        [ "$(( $(size_of "$out") * 100 ))" -le "$(( $(size_of "$f") * 95 ))" ]; then
+                        JXL_LOSSY_RETAINED=$((JXL_LOSSY_RETAINED+1))
                     fi
                 else
                     bad "jxl $jxtag round-trip $n" "cjxl failed on the decoded PNG"
@@ -1161,6 +1187,11 @@ if [ "$JXL_ELIGIBLE" -gt 0 ]; then
     ok "jxl round-tripped $JXL_ELIGIBLE file(s) JXLWorker would re-encode"
 else
     bad "jxl worker eligibility" "no JXL here is one JXLWorker would re-encode, so the round trips above prove nothing about the app"
+fi
+if [ "$JXL_LOSSY_RETAINED" -gt 0 ]; then
+    ok "jxl lossy produced $JXL_LOSSY_RETAINED result(s) JXLWorker would retain"
+else
+    bad "jxl lossy retention" "no eligible result cleared JXLWorker's 5% minimum-savings gate"
 fi
 
 # --- summary -----------------------------------------------------------------
