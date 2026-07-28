@@ -51,13 +51,15 @@ find_tools() {
         "$ROOT_DIR/imageoptim/build/Release/ImageOptim.app/Contents/Frameworks/ImageOptimGPL.framework/Versions/A/Resources"
         "$ROOT_DIR/build/Release/ImageOptim.app/Contents/Frameworks/ImageOptimGPL.framework/Versions/A/Resources"
     )
-    # Resources sits eleven levels below DerivedData in Xcode's default layout:
-    # <project-hash>/Build/Products/Release/…/Versions/A/Resources.
-    local derived
-    derived="$(find "$HOME/Library/Developer/Xcode/DerivedData" -maxdepth 11 \
-        -path '*/Build/Products/Release/ImageOptim.app/Contents/Frameworks/ImageOptimGPL.framework/Versions/A/Resources' \
-        -type d 2>/dev/null | head -1)"
-    [ -n "$derived" ] && candidates+=("$derived")
+    # Every checkout shares one DerivedData directory, so ask Xcode where this
+    # project's products go rather than picking whichever ImageOptim.app is
+    # found there — a stale bundle from another checkout would let the corpus
+    # pass having exercised codecs this checkout never built.
+    local built
+    built="$(xcodebuild -project "$ROOT_DIR/imageoptim/ImageOptim.xcodeproj" \
+        -target ImageOptim -configuration Release -showBuildSettings 2>/dev/null |
+        /usr/bin/awk '/^ *BUILT_PRODUCTS_DIR = /{sub(/^ *BUILT_PRODUCTS_DIR = /, ""); print; exit}')"
+    [ -n "$built" ] && candidates+=("$built/ImageOptim.app/Contents/Frameworks/ImageOptimGPL.framework/Versions/A/Resources")
 
     local dir
     for dir in "${candidates[@]}"; do
@@ -130,8 +132,18 @@ PNGSUITE_WANTED=(
 # saying so.
 MISSING=()
 
+# The wanted PngSuite entries that are not in the cache, one per line. Looking
+# at a single file would let an interrupted extraction — or cases deleted from
+# the cache afterwards — leave most PNG variants untested.
+pngsuite_missing() {
+    local want
+    for want in "${PNGSUITE_WANTED[@]}"; do
+        [ -n "$(find "$CACHE_DIR/pngsuite" -name "$want" -type f 2>/dev/null | head -1)" ] || echo "$want"
+    done
+}
+
 fetch_corpus() {
-    local entry name url
+    local entry name url want
     mkdir -p "$CACHE_DIR"
     for entry in "${CORPUS[@]}"; do
         name="${entry%%|*}"; url="${entry#*|}"
@@ -145,7 +157,7 @@ fetch_corpus() {
         mv "$CACHE_DIR/$name.part" "$CACHE_DIR/$name"
     done
 
-    if [ ! -s "$CACHE_DIR/pngsuite/basn2c08.png" ]; then
+    if [ -n "$(pngsuite_missing)" ]; then
         mkdir -p "$CACHE_DIR/pngsuite"
         if ! curl -sL --fail --max-time 120 -o "$WORK_DIR/pngsuite.tgz" "$PNGSUITE_URL"; then
             echo "  could not fetch PngSuite" >&2
@@ -158,6 +170,13 @@ fetch_corpus() {
             # harness could pass having exercised neither PNG codec.
             echo "  could not unpack PngSuite" >&2
             MISSING+=("PngSuite")
+        else
+            # A case the archive turned out not to hold is a failure too: it is
+            # a PNG variant nothing else in the corpus covers.
+            for want in $(pngsuite_missing); do
+                echo "  $want is not in the PngSuite archive" >&2
+                MISSING+=("pngsuite/$want")
+            done
         fi
     fi
 }
@@ -190,6 +209,20 @@ dimensions_of() {
         /usr/bin/awk '/pixel(Width|Height)/ {printf "%s ", $2}'
 }
 
+# sips has no AVIF or JPEG XL decoder on older macOS, but the bundled decoders
+# do on every host. Decoding to PNG — which sips reads everywhere — keeps the
+# invariant checked instead of leaving the encoder's output unexamined.
+decoded_dimensions_of() {
+    local src=$1 png="$WORK_DIR/probe-$(basename "$src").png"
+    rm -f "$png"
+    case "$src" in
+        *.avif|*.avifs) "$TOOLS/avifdec" "$src" "$png" >/dev/null 2>&1 ;;
+        *.jxl)          "$TOOLS/djxl" "$src" "$png" >/dev/null 2>&1 ;;
+        *)              return 0 ;;
+    esac
+    [ -s "$png" ] && dimensions_of "$png"
+}
+
 # The worker contract: it replaces the file only when the result is smaller, so
 # a pass that grows a file is discarded, not wrong. What must never happen is
 # corrupt output or changed dimensions.
@@ -201,8 +234,13 @@ assert_pass() {
     db=$(dimensions_of "$before"); da=$(dimensions_of "$after")
     if [ -z "$db" ]; then
         # sips has no decoder for this format on this host — AVIF and JPEG XL on
-        # older macOS. Say so rather than let the invariant pass unchecked.
-        skip "$name decodes" "sips cannot read this format here"
+        # older macOS — so ask the bundled decoder instead.
+        db=$(decoded_dimensions_of "$before"); da=$(decoded_dimensions_of "$after")
+    fi
+    if [ -z "$db" ]; then
+        # Nothing here can read the input, so nothing can judge the output
+        # either. Say so rather than let the invariant pass unchecked.
+        skip "$name decodes" "no decoder here reads this format"
     elif [ -z "$da" ]; then
         bad "$name" "output does not decode, though the input did"
         return
@@ -241,6 +279,25 @@ assert_corrupt() {
     fi
 }
 
+# The same contract for a tool that writes to a separate path, as PngCrushWorker
+# does: there is no input file to leave untouched, so a clean refusal is one that
+# leaves behind nothing the worker would keep. The worker discards output of 70
+# bytes or less, which is pngcrush's header-only failure mode.
+assert_corrupt_out() {
+    local name=$1 rc=$2 out=$3
+    if [ "$rc" -ge 128 ]; then
+        bad "$name" "died with a signal (exit $rc)"
+    elif [ "$rc" -ne 0 ]; then
+        ok "$name (corrupt input refused)"
+    elif [ ! -s "$out" ] || [ "$(size_of "$out")" -le 70 ]; then
+        ok "$name (corrupt input accepted, but nothing the worker would keep)"
+    elif [ -z "$(dimensions_of "$out")" ]; then
+        bad "$name" "exited 0 but the output does not decode"
+    else
+        ok "$name (corrupt input accepted and rewritten to a decodable file)"
+    fi
+}
+
 # --- JPEG: Jpegli, through jpegtran and jpegoptim ----------------------------
 
 echo
@@ -260,8 +317,18 @@ for src in "$CACHE_DIR"/jpeg-*.jpg; do
         bad "jpegtran -progressive $n" "exited non-zero"
     fi
     cp "$f" "$WORK_DIR/jo-$n"
-    if "$TOOLS/jpegoptim" --strip-all --quiet "$WORK_DIR/jo-$n" 2>/dev/null; then
+    # JpegoptimWorker's own argument set, verbose output and all, merged the way
+    # the worker merges it.
+    if jo_out=$("$TOOLS/jpegoptim" --strip-all --all-normal -v -- "$WORK_DIR/jo-$n" 2>&1); then
         assert_pass "jpegoptim $n" "$f" "$WORK_DIR/jo-$n"
+        # The worker takes the optimized size from the number after " --> " and
+        # keeps the temp file only once that parse succeeded, so losing this
+        # line would make ImageOptim discard every jpegoptim result.
+        if grep -Eq ' --> +[0-9]+' <<< "$jo_out"; then
+            ok "jpegoptim -v still prints the size line JpegoptimWorker parses for $n"
+        else
+            bad "jpegoptim size probe $n" "no ' --> <size>' line, so fileSizeOptimized would stay zero"
+        fi
     else
         bad "jpegoptim $n" "exited non-zero"
     fi
@@ -273,7 +340,9 @@ echo
 echo "PNG — PngSuite through OxiPNG and PNGCrush"
 for want in "${PNGSUITE_WANTED[@]}"; do
     src=$(find "$CACHE_DIR/pngsuite" -name "$want" -type f 2>/dev/null | head -1)
-    if [ -z "$src" ]; then skip "pngsuite $want" "not in the archive"; continue; fi
+    # An absent case is already counted as a failure by fetch_corpus, so this
+    # only says which codecs went unexercised because of it.
+    if [ -z "$src" ]; then skip "pngsuite $want" "not in the corpus; reported as a fetch failure"; continue; fi
     corrupt=0
     case "$want" in x*) corrupt=1 ;; esac
     f=$(copy_in "$src")
@@ -289,55 +358,87 @@ for want in "${PNGSUITE_WANTED[@]}"; do
         bad "oxipng $want" "exited $rc on a valid PNG"
     fi
 
-    cp "$f" "$WORK_DIR/pc-$want"
-    "$TOOLS/pngcrush" -q -ow "$WORK_DIR/pc-$want" >/dev/null 2>&1
-    rc=$?
-    if [ "$corrupt" -eq 1 ]; then
-        assert_corrupt "pngcrush $want (corrupt)" "$rc" "$f" "$WORK_DIR/pc-$want"
-    elif [ "$rc" -eq 0 ]; then
-        assert_pass "pngcrush $want" "$f" "$WORK_DIR/pc-$want"
-    elif [ "$rc" -ge 128 ]; then
-        bad "pngcrush $want" "died with a signal (exit $rc)"
-    elif cmp -s "$f" "$WORK_DIR/pc-$want"; then
-        # Only a clean refusal that leaves the file alone is tolerable here; a
-        # crash, or a failure that still rewrote the file, is a real failure.
-        skip "pngcrush $want" "declined this variant, file untouched"
-    else
-        bad "pngcrush $want" "exited $rc on a valid PNG and modified the file"
-    fi
+    # PngCrushWorker's own argument set, written to a separate path as the worker
+    # does; the second run adds the flags its strip and brute settings turn on.
+    for pcmode in "plain:" "strip-brute:-rem alla -brute"; do
+        pctag="${pcmode%%:*}"; pcextra="${pcmode#*:}"
+        out="$WORK_DIR/pc-$pctag-$want"
+        rm -f "$out"
+        "$TOOLS/pngcrush" $pcextra -nofilecheck -bail -blacken -reduce -cc -- "$f" "$out" >/dev/null 2>&1
+        rc=$?
+        label="pngcrush $pctag $want"
+        if [ "$corrupt" -eq 1 ]; then
+            assert_corrupt_out "$label (corrupt)" "$rc" "$out"
+        elif [ "$rc" -ge 128 ]; then
+            bad "$label" "died with a signal (exit $rc)"
+        elif [ "$rc" -eq 0 ]; then
+            if [ -s "$out" ]; then
+                assert_pass "$label" "$f" "$out"
+            else
+                bad "$label" "exited 0 without writing an output file"
+            fi
+        elif [ -s "$out" ]; then
+            # Only a clean refusal that writes nothing is tolerable here; a
+            # crash, or a failure that still wrote a file, is a real failure.
+            bad "$label" "exited $rc on a valid PNG and still wrote an output file"
+        else
+            skip "$label" "declined this variant, nothing written"
+        fi
+    done
 done
 
 # --- GIF: mainline gifsicle --------------------------------------------------
 
 echo
 echo "GIF — mainline gifsicle, including the --lossy path from giflossy"
+
+# Everything GifsicleWorker passes on every run. --careful in particular works
+# around a Safari/Preview decoding bug, so a build that rejected it would make
+# ImageOptim fail every GIF while a bare -O3 run still succeeded.
+GIF_WORKER_OPTS="-O3 --careful --no-comments --no-names --same-delay --same-loopcount --no-warnings"
+
+# The frame delays and loop count gifsicle reports, which --same-delay and
+# --same-loopcount are there to preserve.
+timing_of() {
+    "$TOOLS/gifsicle" --info "$1" 2>/dev/null |
+        grep -Eo 'delay [0-9.]+s|loop( count [0-9]+| forever)'
+}
+
 for src in "$CACHE_DIR"/gif-*.gif; do
     [ -f "$src" ] || continue
     n=$(basename "$src")
     f=$(copy_in "$src")
-    for mode in "plain:-O3" "lossy:-O3 --lossy=30"; do
+    for mode in "plain:--no-interlace" "interlaced:--interlace" "lossy:--no-interlace --lossy=30"; do
         tag="${mode%%:*}"; opts="${mode#*:}"
-        label="gifsicle ${opts} $n"
+        label="gifsicle $tag $n"
         outfile="$WORK_DIR/gs-$tag-$n"
-        if "$TOOLS/gifsicle" $opts -o "$outfile" "$f" 2>/dev/null && [ -s "$outfile" ]; then
+        if "$TOOLS/gifsicle" $opts $GIF_WORKER_OPTS -o "$outfile" -- "$f" 2>/dev/null && [ -s "$outfile" ]; then
             if "$TOOLS/gifsicle" --info "$outfile" >/dev/null 2>&1; then
                 assert_pass "$label" "$f" "$outfile"
             else
                 bad "$label" "output is not a readable GIF"
             fi
         else
-            bad "$label" "gifsicle failed (is --lossy present?)"
+            bad "$label" "gifsicle failed (are --lossy and the worker's options present?)"
         fi
     done
-    # Both outputs must keep every frame — --lossy is the path that changed.
+    # Every output must keep every frame, and play it the same way — --lossy is
+    # the path that changed, and a dropped delay or loop count is a regression
+    # the frame count alone would not notice.
     fin=$("$TOOLS/gifsicle" --info "$f" 2>/dev/null | grep -c 'image #')
     if [ "$fin" -gt 1 ]; then
-        for tag in plain lossy; do
+        tin=$(timing_of "$f")
+        for tag in plain interlaced lossy; do
             fout=$("$TOOLS/gifsicle" --info "$WORK_DIR/gs-$tag-$n" 2>/dev/null | grep -c 'image #')
             if [ "$fin" = "$fout" ]; then
                 ok "gifsicle $tag preserved all $fin frames of $n"
             else
                 bad "gifsicle frames $tag $n" "frame count changed: $fin -> $fout"
+            fi
+            if [ "$tin" = "$(timing_of "$WORK_DIR/gs-$tag-$n")" ]; then
+                ok "gifsicle $tag preserved the delays and loop count of $n"
+            else
+                bad "gifsicle timing $tag $n" "frame delays or loop count changed"
             fi
         done
     fi
@@ -350,6 +451,13 @@ echo "SVG — SVGO v4"
 SVGO_JS="$TOOLS/svgo.js"
 XMLLINT=/usr/bin/xmllint
 
+# SvgoWorker accepts node at these two paths and nowhere else, so resolving it
+# through PATH would run SVGO here on a host where the app declines every SVG.
+NODE=
+for candidate in /usr/local/bin/node /opt/homebrew/bin/node; do
+    if [ -x "$candidate" ]; then NODE=$candidate; break; fi
+done
+
 # The ids a document references through url(#…), one per line.
 refs_in() { grep -o 'url(#[^)]*)' "$1" | sed 's/url(#//;s/)//' | sort -u; }
 
@@ -357,14 +465,14 @@ if [ ! -f "$SVGO_JS" ]; then
     # find_tools already proved the bundle is there, so svgo.js missing from it
     # is a packaging error that makes SvgoWorker decline every SVG.
     bad "svgo" "svgo.js is not in the bundle, so no SVG would ever be optimized"
-elif ! command -v node >/dev/null 2>&1; then
-    skip "svgo" "node is not installed"
+elif [ -z "$NODE" ]; then
+    skip "svgo" "node is not at either path SvgoWorker accepts"
 else
     for src in "$CACHE_DIR"/svg-*.svg; do
         [ -f "$src" ] || continue
         n=$(basename "$src")
         f=$(copy_in "$src")
-        if node "$SVGO_JS" 0 "$f" "$WORK_DIR/sv-$n" 2>/dev/null && [ -s "$WORK_DIR/sv-$n" ]; then
+        if "$NODE" "$SVGO_JS" 0 "$f" "$WORK_DIR/sv-$n" 2>/dev/null && [ -s "$WORK_DIR/sv-$n" ]; then
             sb=$(size_of "$f"); sa=$(size_of "$WORK_DIR/sv-$n")
             # The raster paths run the output through a decoder; this is the
             # equivalent for SVG, since truncated XML can still contain "<svg".
@@ -410,13 +518,40 @@ fi
 
 echo
 echo "AVIF — libavif, round-tripped through PNG as AVIFWorker does"
+
+# The bit depth AVIFWorker reads out of avifdec --info, empty if that line is
+# not there in the form the worker parses.
+avif_depth_of() {
+    "$TOOLS/avifdec" --info "$1" 2>/dev/null |
+        /usr/bin/sed -n 's/^ \* Bit Depth      : \([0-9][0-9]*\).*/\1/p' | head -1
+}
+
 for src in "$CACHE_DIR"/avif-*.avif; do
     [ -f "$src" ] || continue
     n=$(basename "$src")
     f=$(copy_in "$src")
+    depth=$(avif_depth_of "$f")
+    if [ -z "$depth" ]; then
+        bad "avif bit-depth probe $n" "avifdec --info no longer prints the depth AVIFWorker re-encodes with"
+    fi
+    # avifdec writes >8-bit images as 16-bit PNG, from which avifenc would infer
+    # 12 bits, so the worker passes the original depth back. Without doing the
+    # same here the round trip silently changes it.
+    encargs=(-q 80 -s 8)
+    case "$depth" in
+        10|12) encargs+=(-d "$depth") ;;
+    esac
     if "$TOOLS/avifdec" "$f" "$WORK_DIR/dec-$n.png" >/dev/null 2>&1 && [ -s "$WORK_DIR/dec-$n.png" ]; then
-        if "$TOOLS/avifenc" -q 80 -s 8 "$WORK_DIR/dec-$n.png" "$WORK_DIR/re-$n" >/dev/null 2>&1; then
+        if "$TOOLS/avifenc" "${encargs[@]}" "$WORK_DIR/dec-$n.png" "$WORK_DIR/re-$n" >/dev/null 2>&1; then
             assert_pass "avif round-trip $n" "$f" "$WORK_DIR/re-$n"
+            if [ -n "$depth" ]; then
+                redepth=$(avif_depth_of "$WORK_DIR/re-$n")
+                if [ "$depth" = "$redepth" ]; then
+                    ok "avif round-trip $n kept its ${depth}-bit depth"
+                else
+                    bad "avif depth $n" "bit depth changed: $depth -> ${redepth:-unreadable}"
+                fi
+            fi
         else
             bad "avif round-trip $n" "avifenc failed on the decoded PNG"
         fi
@@ -468,14 +603,44 @@ for src in "$CACHE_DIR"/jxl-*.jxl; do
         bad "jxl decode $n" "djxl failed"
     fi
 
-    # JXLWorker reads bit depth out of jxlinfo -v with a regex and declines
-    # anything float or above 16 bits. This is that regex, on the stdout the
-    # worker pipes, so a bare "10-bit" without the comma the worker requires —
-    # or output that moved to stderr — fails here too.
-    if "$TOOLS/jxlinfo" -v "$f" 2>/dev/null | grep -Eq ', [0-9]+-bit|bits per sample: [0-9]+'; then
+    # canRoundTripThroughPngAtPath: refuses the file unless jxlinfo -v matches
+    # every one of these, so each is checked here, on the stdout the worker
+    # pipes: output that moved to stderr, or a line that changed shape, would
+    # otherwise leave ImageOptim declining every JXL while the round trip above
+    # still succeeds.
+    info="$("$TOOLS/jxlinfo" -v "$f" 2>/dev/null)"
+
+    # The bit-depth regex, which also declines anything float or above 16 bits.
+    # A bare "10-bit" without the comma the worker requires fails here too.
+    if grep -Eq ', [0-9]+-bit|bits per sample: [0-9]+' <<< "$info"; then
         ok "jxlinfo -v reports bit depth for $n in the form JXLWorker parses"
     else
         bad "jxl bit-depth probe $n" "jxlinfo output no longer matches the worker's regex"
+    fi
+
+    # The animation and preview flags, which the worker requires literally.
+    for want_line in "Have animation: 0" "Have preview: 0"; do
+        if grep -qF "$want_line" <<< "$info"; then
+            ok "jxlinfo -v still prints \"$want_line\" for $n"
+        else
+            bad "jxl probe $n" "\"$want_line\" is missing, so JXLWorker would decline this still image"
+        fi
+    done
+
+    # Container boxes, which the worker matches with a regex spanning three
+    # consecutive lines; anything it cannot match reads as a box the round trip
+    # would drop. A bare codestream carries none, and there is nothing to check.
+    boxes=$(grep -c '^  type: "' <<< "$info")
+    if [ "$boxes" -eq 0 ]; then
+        skip "jxl box probe $n" "this file is a bare codestream"
+    elif /usr/bin/awk '
+            /^  type: "..../ { expect = 2; next }
+            expect == 2 { if ($0 !~ /^  size: [0-9]+$/) broken = 1; expect = 1; next }
+            expect == 1 { if ($0 !~ /^  contents size: [0-9]+$/) broken = 1; expect = 0; next }
+            END { exit broken ? 1 : 0 }' <<< "$info"; then
+        ok "jxlinfo -v lists the $boxes boxes of $n the way JXLWorker reads them"
+    else
+        bad "jxl box probe $n" "the box listing no longer matches the worker's regex, so every box would read as unsupported"
     fi
 done
 
