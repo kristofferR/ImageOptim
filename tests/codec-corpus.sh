@@ -99,8 +99,11 @@ CORPUS=(
     # libjpeg-turbo's reference JPEG
     "jpeg-testorig.jpg|https://raw.githubusercontent.com/libjpeg-turbo/libjpeg-turbo/main/testimages/testorig.jpg"
 
-    # SVG: a W3C conformance case and a real-world icon
+    # SVG: two W3C conformance cases and a real-world icon. The gradient case is
+    # the one that carries url(#…) references, which is what the audit below
+    # needs to have anything to say about cleanupIds.
     "svg-w3c-struct-image.svg|https://www.w3.org/Graphics/SVG/Test/20110816/svg/struct-image-01-t.svg"
+    "svg-w3c-gradients.svg|https://www.w3.org/Graphics/SVG/Test/20110816/svg/pservers-grad-01-b.svg"
     "svg-bootstrap-gear.svg|https://raw.githubusercontent.com/twbs/icons/main/icons/gear.svg"
 )
 
@@ -279,17 +282,18 @@ assert_corrupt() {
     fi
 }
 
-# The same contract for a tool that writes to a separate path, as PngCrushWorker
-# does: there is no input file to leave untouched, so a clean refusal is one that
-# leaves behind nothing the worker would keep. The worker discards output of 70
-# bytes or less, which is pngcrush's header-only failure mode.
+# The same contract for a tool that writes to a separate path, as OxiPngWorker
+# and PngCrushWorker do: there is no input file to leave untouched, so a clean
+# refusal is one that leaves behind nothing the worker would keep. The optional
+# fourth argument is the size at or below which the worker discards the output —
+# 70 bytes for pngcrush, whose failure mode is a header-only PNG.
 assert_corrupt_out() {
-    local name=$1 rc=$2 out=$3
+    local name=$1 rc=$2 out=$3 discard_at_or_below=${4:-0}
     if [ "$rc" -ge 128 ]; then
         bad "$name" "died with a signal (exit $rc)"
     elif [ "$rc" -ne 0 ]; then
         ok "$name (corrupt input refused)"
-    elif [ ! -s "$out" ] || [ "$(size_of "$out")" -le 70 ]; then
+    elif [ ! -s "$out" ] || [ "$(size_of "$out")" -le "$discard_at_or_below" ]; then
         ok "$name (corrupt input accepted, but nothing the worker would keep)"
     elif [ -z "$(dimensions_of "$out")" ]; then
         bad "$name" "exited 0 but the output does not decode"
@@ -316,28 +320,44 @@ for src in "$CACHE_DIR"/jpeg-*.jpg; do
     else
         bad "jpegtran -progressive $n" "exited non-zero"
     fi
-    cp "$f" "$WORK_DIR/jo-$n"
-    # JpegoptimWorker's own argument set, verbose output and all, merged the way
-    # the worker merges it.
-    if jo_out=$("$TOOLS/jpegoptim" --strip-all --all-normal -v -- "$WORK_DIR/jo-$n" 2>&1); then
-        assert_pass "jpegoptim $n" "$f" "$WORK_DIR/jo-$n"
-        # The worker takes the optimized size from the number after " --> " and
-        # keeps the temp file only once that parse succeeded, so losing this
-        # line would make ImageOptim discard every jpegoptim result.
-        if grep -Eq ' --> +[0-9]+' <<< "$jo_out"; then
-            ok "jpegoptim -v still prints the size line JpegoptimWorker parses for $n"
+    # JpegoptimWorker's own argument sets, verbose output and all, merged the way
+    # the worker merges it: the lossless default, and the -m<quality> progressive
+    # set it switches to once LossyEnabled is on, at the shipped max quality.
+    for jomode in "lossless:--strip-all --all-normal" "lossy:-m80 --strip-all --all-progressive"; do
+        jotag="${jomode%%:*}"; joargs="${jomode#*:}"
+        out="$WORK_DIR/jo-$jotag-$n"
+        cp "$f" "$out"
+        if jo_out=$("$TOOLS/jpegoptim" $joargs -v -- "$out" 2>&1); then
+            assert_pass "jpegoptim $jotag $n" "$f" "$out"
+            # The worker takes the optimized size from the number after " --> " and
+            # keeps the temp file only once that parse succeeded, so losing this
+            # line would make ImageOptim discard every jpegoptim result.
+            if grep -Eq ' --> +[0-9]+' <<< "$jo_out"; then
+                ok "jpegoptim -v still prints the size line JpegoptimWorker parses for $jotag $n"
+            else
+                bad "jpegoptim size probe $jotag $n" "no ' --> <size>' line, so fileSizeOptimized would stay zero"
+            fi
         else
-            bad "jpegoptim size probe $n" "no ' --> <size>' line, so fileSizeOptimized would stay zero"
+            bad "jpegoptim $jotag $n" "exited non-zero"
         fi
-    else
-        bad "jpegoptim $n" "exited non-zero"
-    fi
+    done
 done
 
 # --- PNG: the tools left after Zopfli's removal ------------------------------
 
 echo
 echo "PNG — PngSuite through OxiPNG and PNGCrush"
+
+# PngCrushWorker's own argument set; the second entry adds the flags its strip
+# and brute settings turn on.
+PNGCRUSH_MODES=("plain:" "strip-brute:-rem alla -brute")
+# A pngcrush run that declines one variant is tolerable, but if a mode declines
+# every valid PNG the loop below records nothing but skips, and the summary
+# ignores skips — so the harness would pass having never seen pngcrush produce a
+# result, while PngCrushWorker would decline every PNG in production.
+PNGCRUSH_VALID=0
+PNGCRUSH_SUCCEEDED=""
+
 for want in "${PNGSUITE_WANTED[@]}"; do
     src=$(find "$CACHE_DIR/pngsuite" -name "$want" -type f 2>/dev/null | head -1)
     # An absent case is already counted as a failure by fetch_corpus, so this
@@ -345,22 +365,27 @@ for want in "${PNGSUITE_WANTED[@]}"; do
     if [ -z "$src" ]; then skip "pngsuite $want" "not in the corpus; reported as a fetch failure"; continue; fi
     corrupt=0
     case "$want" in x*) corrupt=1 ;; esac
+    [ "$corrupt" -eq 0 ] && PNGCRUSH_VALID=$((PNGCRUSH_VALID+1))
     f=$(copy_in "$src")
 
-    cp "$f" "$WORK_DIR/ox-$want"
-    "$TOOLS/oxipng" -o 2 -q --strip safe "$WORK_DIR/ox-$want" >/dev/null 2>&1
+    # OxiPngWorker's own argument set: the shipped level with metadata stripping,
+    # written to a separate path rather than in place, as the worker does.
+    out="$WORK_DIR/ox-$want"
+    rm -f "$out"
+    "$TOOLS/oxipng" --strip=safe -o4 -i0 -a --out "$out" -- "$f" >/dev/null 2>&1
     rc=$?
     if [ "$corrupt" -eq 1 ]; then
-        assert_corrupt "oxipng $want (corrupt)" "$rc" "$f" "$WORK_DIR/ox-$want"
+        assert_corrupt_out "oxipng $want (corrupt)" "$rc" "$out"
     elif [ "$rc" -eq 0 ]; then
-        assert_pass "oxipng $want" "$f" "$WORK_DIR/ox-$want"
+        # oxipng copies the input across when it cannot improve on it, so an
+        # already-optimal PNG still leaves a file the worker would compare.
+        assert_pass "oxipng $want" "$f" "$out"
     else
         bad "oxipng $want" "exited $rc on a valid PNG"
     fi
 
-    # PngCrushWorker's own argument set, written to a separate path as the worker
-    # does; the second run adds the flags its strip and brute settings turn on.
-    for pcmode in "plain:" "strip-brute:-rem alla -brute"; do
+    # pngcrush, written to a separate path as the worker does.
+    for pcmode in "${PNGCRUSH_MODES[@]}"; do
         pctag="${pcmode%%:*}"; pcextra="${pcmode#*:}"
         out="$WORK_DIR/pc-$pctag-$want"
         rm -f "$out"
@@ -374,6 +399,10 @@ for want in "${PNGSUITE_WANTED[@]}"; do
         elif [ "$rc" -eq 0 ]; then
             if [ -s "$out" ]; then
                 assert_pass "$label" "$f" "$out"
+                case " $PNGCRUSH_SUCCEEDED " in
+                    *" $pctag "*) ;;
+                    *) PNGCRUSH_SUCCEEDED="$PNGCRUSH_SUCCEEDED $pctag" ;;
+                esac
             else
                 bad "$label" "exited 0 without writing an output file"
             fi
@@ -386,6 +415,18 @@ for want in "${PNGSUITE_WANTED[@]}"; do
         fi
     done
 done
+
+# Declining every valid PNG is not a variant pngcrush dislikes, it is a mode that
+# no longer works — one of the worker's mandatory flags gone, say.
+if [ "$PNGCRUSH_VALID" -gt 0 ]; then
+    for pcmode in "${PNGCRUSH_MODES[@]}"; do
+        pctag="${pcmode%%:*}"
+        case " $PNGCRUSH_SUCCEEDED " in
+            *" $pctag "*) ok "pngcrush $pctag produced a result for at least one of the $PNGCRUSH_VALID valid PNGs" ;;
+            *) bad "pngcrush $pctag" "declined all $PNGCRUSH_VALID valid PNGs, so PngCrushWorker would never keep an output" ;;
+        esac
+    done
+fi
 
 # --- GIF: mainline gifsicle --------------------------------------------------
 
@@ -472,45 +513,52 @@ else
         [ -f "$src" ] || continue
         n=$(basename "$src")
         f=$(copy_in "$src")
-        if "$NODE" "$SVGO_JS" 0 "$f" "$WORK_DIR/sv-$n" 2>/dev/null && [ -s "$WORK_DIR/sv-$n" ]; then
-            sb=$(size_of "$f"); sa=$(size_of "$WORK_DIR/sv-$n")
-            # The raster paths run the output through a decoder; this is the
-            # equivalent for SVG, since truncated XML can still contain "<svg".
-            if [ ! -x "$XMLLINT" ]; then
-                skip "svgo $n parses" "xmllint is not available here"
-            elif ! "$XMLLINT" --noout "$WORK_DIR/sv-$n" 2>/dev/null; then
-                bad "svgo $n" "output is not well-formed XML"
-            elif ! grep -q '<svg' "$WORK_DIR/sv-$n"; then
-                bad "svgo $n" "output parses but has no <svg> element"
+        # The argument SvgoWorker passes: 0 for the default plugin list, 1 once
+        # LossyEnabled turns on cleanupIds and the rest of the lossy plugins.
+        for svmode in "lite:0" "lossy:1"; do
+            svtag="${svmode%%:*}"; svarg="${svmode#*:}"
+            out="$WORK_DIR/sv-$svtag-$n"
+            rm -f "$out"
+            if "$NODE" "$SVGO_JS" "$svarg" "$f" "$out" 2>/dev/null && [ -s "$out" ]; then
+                sb=$(size_of "$f"); sa=$(size_of "$out")
+                # The raster paths run the output through a decoder; this is the
+                # equivalent for SVG, since truncated XML can still contain "<svg".
+                if [ ! -x "$XMLLINT" ]; then
+                    skip "svgo $svtag $n parses" "xmllint is not available here"
+                elif ! "$XMLLINT" --noout "$out" 2>/dev/null; then
+                    bad "svgo $svtag $n" "output is not well-formed XML"
+                elif ! grep -q '<svg' "$out"; then
+                    bad "svgo $svtag $n" "output parses but has no <svg> element"
+                else
+                    ok "svgo $svtag $n parses as XML"
+                fi
+                if [ "$sa" -gt "$sb" ]; then
+                    ok "svgo $svtag $n (${sb} -> ${sa} bytes; larger, so the worker discards it)"
+                else
+                    ok "svgo $svtag $n (${sb} -> ${sa} bytes)"
+                fi
+                # Every url(#id) reference must still resolve, and none may have
+                # vanished: dropping a reference along with its target is the
+                # rendering regression this is here to catch. cleanupIds, which
+                # only the lossy run enables, renames ids, so the input and
+                # output sets are compared by count, not by name.
+                dangling=0
+                for ref in $(refs_in "$out"); do
+                    grep -q "id=\"$ref\"" "$out" || dangling=1
+                done
+                rin=$(refs_in "$f" | wc -l | tr -d ' ')
+                rout=$(refs_in "$out" | wc -l | tr -d ' ')
+                if [ "$dangling" -ne 0 ]; then
+                    bad "svgo $svtag $n" "an id referenced by url(#…) was removed"
+                elif [ "$rout" -lt "$rin" ]; then
+                    bad "svgo $svtag $n" "url(#…) references disappeared: $rin -> $rout"
+                else
+                    ok "svgo $svtag $n kept all $rin url(#…) references resolvable"
+                fi
             else
-                ok "svgo $n parses as XML"
+                bad "svgo $svtag $n" "produced no output"
             fi
-            if [ "$sa" -gt "$sb" ]; then
-                ok "svgo $n (${sb} -> ${sa} bytes; larger, so the worker discards it)"
-            else
-                ok "svgo $n (${sb} -> ${sa} bytes)"
-            fi
-            # Every url(#id) reference must still resolve, and none may have
-            # vanished: dropping a reference along with its target is the
-            # rendering regression this is here to catch. cleanupIds renames
-            # ids, so the input and output sets are compared by count, not by
-            # name.
-            dangling=0
-            for ref in $(refs_in "$WORK_DIR/sv-$n"); do
-                grep -q "id=\"$ref\"" "$WORK_DIR/sv-$n" || dangling=1
-            done
-            rin=$(refs_in "$f" | wc -l | tr -d ' ')
-            rout=$(refs_in "$WORK_DIR/sv-$n" | wc -l | tr -d ' ')
-            if [ "$dangling" -ne 0 ]; then
-                bad "svgo $n" "an id referenced by url(#…) was removed"
-            elif [ "$rout" -lt "$rin" ]; then
-                bad "svgo $n" "url(#…) references disappeared: $rin -> $rout"
-            else
-                ok "svgo $n kept all $rin url(#…) references resolvable"
-            fi
-        else
-            bad "svgo $n" "produced no output"
-        fi
+        done
     done
 fi
 
@@ -537,24 +585,31 @@ for src in "$CACHE_DIR"/avif-*.avif; do
     # avifdec writes >8-bit images as 16-bit PNG, from which avifenc would infer
     # 12 bits, so the worker passes the original depth back. Without doing the
     # same here the round trip silently changes it.
-    encargs=(-q 80 -s 8)
+    depthargs=
     case "$depth" in
-        10|12) encargs+=(-d "$depth") ;;
+        10|12) depthargs="-d $depth" ;;
     esac
     if "$TOOLS/avifdec" "$f" "$WORK_DIR/dec-$n.png" >/dev/null 2>&1 && [ -s "$WORK_DIR/dec-$n.png" ]; then
-        if "$TOOLS/avifenc" "${encargs[@]}" "$WORK_DIR/dec-$n.png" "$WORK_DIR/re-$n" >/dev/null 2>&1; then
-            assert_pass "avif round-trip $n" "$f" "$WORK_DIR/re-$n"
-            if [ -n "$depth" ]; then
-                redepth=$(avif_depth_of "$WORK_DIR/re-$n")
-                if [ "$depth" = "$redepth" ]; then
-                    ok "avif round-trip $n kept its ${depth}-bit depth"
-                else
-                    bad "avif depth $n" "bit depth changed: $depth -> ${redepth:-unreadable}"
+        # AVIFWorker's own encoder arguments: --lossless with the shipped
+        # LossyEnabled=false default, -q <AvifQuality> once it is on, and speed 4
+        # either way.
+        for avmode in "lossless:--lossless" "lossy:-q 85"; do
+            avtag="${avmode%%:*}"; avq="${avmode#*:}"
+            out="$WORK_DIR/re-$avtag-$n"
+            if "$TOOLS/avifenc" $avq $depthargs -s 4 "$WORK_DIR/dec-$n.png" "$out" >/dev/null 2>&1; then
+                assert_pass "avif $avtag round-trip $n" "$f" "$out"
+                if [ -n "$depth" ]; then
+                    redepth=$(avif_depth_of "$out")
+                    if [ "$depth" = "$redepth" ]; then
+                        ok "avif $avtag round-trip $n kept its ${depth}-bit depth"
+                    else
+                        bad "avif depth $avtag $n" "bit depth changed: $depth -> ${redepth:-unreadable}"
+                    fi
                 fi
+            else
+                bad "avif $avtag round-trip $n" "avifenc failed on the decoded PNG"
             fi
-        else
-            bad "avif round-trip $n" "avifenc failed on the decoded PNG"
-        fi
+        done
     else
         bad "avif decode $n" "avifdec failed"
     fi
@@ -593,11 +648,29 @@ for src in "$CACHE_DIR"/jxl-*.jxl; do
     [ -f "$src" ] || continue
     n=$(basename "$src")
     f=$(copy_in "$src")
-    if "$TOOLS/djxl" "$f" "$WORK_DIR/dec-$n.png" >/dev/null 2>&1 && [ -s "$WORK_DIR/dec-$n.png" ]; then
-        if "$TOOLS/cjxl" -q 90 -e 4 "$WORK_DIR/dec-$n.png" "$WORK_DIR/re-$n" >/dev/null 2>&1; then
-            assert_pass "jxl round-trip $n" "$f" "$WORK_DIR/re-$n"
+    # JXLWorker's own decode. --output_frames makes djxl write the frame as
+    # <name>-0.png instead of <name>.png for some files, which is why the worker
+    # looks for both; decoding into a directory of its own keeps the two apart.
+    decdir="$WORK_DIR/jxl-dec-$n"
+    rm -rf "$decdir"; mkdir -p "$decdir"
+    if "$TOOLS/djxl" "$f" "$decdir/dec.png" --output_frames --output_extra_channels >/dev/null 2>&1; then
+        frame="$decdir/dec.png"
+        [ -s "$frame" ] || frame="$decdir/dec-0.png"
+        if [ ! -s "$frame" ]; then
+            bad "jxl decode $n" "djxl wrote neither dec.png nor dec-0.png, so DecodedFramePath would find nothing"
         else
-            bad "jxl round-trip $n" "cjxl failed on the decoded PNG"
+            # -q 100 -e 9 is what Job builds by default, since it creates a
+            # quality-100 worker unless lossy optimization is on; -q <JxlQuality>
+            # is the lossy case, at the same effort.
+            for jxmode in "lossless:100" "lossy:90"; do
+                jxtag="${jxmode%%:*}"; jxq="${jxmode#*:}"
+                out="$WORK_DIR/re-$jxtag-$n"
+                if "$TOOLS/cjxl" -q "$jxq" -e 9 "$frame" "$out" >/dev/null 2>&1; then
+                    assert_pass "jxl $jxtag round-trip $n" "$f" "$out"
+                else
+                    bad "jxl $jxtag round-trip $n" "cjxl failed on the decoded PNG"
+                fi
+            done
         fi
     else
         bad "jxl decode $n" "djxl failed"
