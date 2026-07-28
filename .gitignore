@@ -169,3 +169,4 @@ tests/corpus-cache/
 # Shared scheme for the test action. User schemes stay ignored above;
 # this one has to be tracked or `xcodebuild test` has nothing to run.
 !imageoptim/ImageOptim.xcodeproj/xcshareddata/xcschemes/BackendTests.xcscheme
+!imageoptim/ImageOptim.xcodeproj/xcshareddata/xcschemes/ImageOptim.xcscheme
