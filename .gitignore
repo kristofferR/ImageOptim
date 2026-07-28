@@ -162,3 +162,10 @@ svgo/build/
 svgo/node_modules/
 pngcrush/tmp/
 pngcrush/LICENSE
+
+# Corpus downloaded by tests/codec-corpus.sh
+tests/corpus-cache/
+
+# Shared scheme for the test action. User schemes stay ignored above;
+# this one has to be tracked or `xcodebuild test` has nothing to run.
+!imageoptim/ImageOptim.xcodeproj/xcshareddata/xcschemes/BackendTests.xcscheme
